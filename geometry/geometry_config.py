@@ -603,7 +603,7 @@ with ConfigRegistry.register_config("basic") as c:
         
         c.tauMudet.XFe = scaleMudet*1.900*u.m #layer dimensions, excluded supports
         c.tauMudet.YFe = scaleMudet*3.600*u.m
-        c.tauMudet.ZFethick = 15.*u.cm
+        c.tauMudet.ZFethick = 20.*u.cm
         c.tauMudet.ZFethin = 10.* u.cm
 
         c.tauMudet.XRpc = c.tauMudet.XFe
