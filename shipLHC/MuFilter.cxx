@@ -19,6 +19,11 @@
 #include "TGeoBBox.h"
 #include "TGeoCompositeShape.h"
 
+//////////
+#include "TGeoPara.h"
+#include "TGeoArb8.h"
+/////////
+
 #include "TParticle.h"
 #include "TParticlePDG.h"
 #include "TParticleClassPDG.h"
@@ -396,6 +401,179 @@ void MuFilter::ConstructGeometry()
  		// Andrew added a 60 here to make each horizontal + vertical sub-plane contain bars given detIDs as one plane. So the first bar in the vert. sub plane is the 60th etc. 
 			}
 	}
+	// COLDBOX GEOM
+	InitMedium("Borated30polyethylene");
+	TGeoMedium *Bor30Poly =gGeoManager->GetMedium("Borated30polyethylene");
+	InitMedium("Epoxy");
+	TGeoMedium *Acrylic =gGeoManager->GetMedium("Epoxy");
+
+	Float_t Acrylic_width		= 5.0; 		// cm
+	Float_t BPoly_width		= 4.0; 		// cm
+   	Float_t CBFrontWall_xdim	= 219.;		// cm
+	Float_t CBFrontWall_ydim	= 170.72-Acrylic_width; 	// cm
+	Float_t CBLatWall_zdim		= 176.0; 	// cm
+	Float_t CBTiny_zdim		= 17.0; 	// cm
+	Float_t CBExtra_zdim		= 41.0;		// cm
+	Float_t CBExtra_xdim		= 67.5;		// cm
+	Float_t SlopedWall_zproj	= 110.0;	// cm	
+	Float_t CBRearWall_xdim		= CBFrontWall_xdim-SlopedWall_zproj*TMath::Tan(TMath::DegToRad()*15.)-CBExtra_xdim+Acrylic_width;
+
+    	Float_t FeX		= 80.;
+	Float_t FeY		= 60.;
+	Float_t FeZ		= 20.;
+
+
+    // ************************ ACRYLIC
+    // Shapes definition
+    	TGeoBBox *FeBlock_cb 	 	= new TGeoBBox("FeBlock_cb",FeX/2, FeY/2, FeZ/2);
+	TGeoBBox *CBFrontWall_a 	= new TGeoBBox("CBFrontWall_a", CBFrontWall_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
+	TGeoBBox *CBLateral_a 		= new TGeoBBox("CBLateral_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBLatWall_zdim-2*Acrylic_width)/2.);
+	TGeoBBox *CBExtraFront_a	= new TGeoBBox("CBExtraFront_a", CBExtra_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
+	TGeoBBox *CBExtraLat_a		= new TGeoBBox("CBExtraLat_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBExtra_zdim-2*Acrylic_width)/2.);
+	TGeoBBox *CBTiny1_a		= new TGeoBBox("CBTiny1_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBTiny_zdim-Acrylic_width-BPoly_width)/2.);
+	TGeoBBox *CBTiny2_a		= new TGeoBBox("CBTiny2_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBTiny_zdim-Acrylic_width)/2.);
+	TGeoBBox *CBRearWall_a		= new TGeoBBox("CBRearWall_a", CBRearWall_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
+
+    	TGeoTranslation *CBWallpos = new TGeoTranslation("CBWallpos", (CBRearWall_xdim-FeX)/2. - 28.5, (FeY-CBFrontWall_ydim)/2., 0);
+	CBWallpos->RegisterYourself();
+
+	TGeoCompositeShape *CBWallDownstream = new TGeoCompositeShape("CBWallDownstream", "CBRearWall_a-(FeBlock_cb:CBWallpos)");
+    	TGeoPara *CBWallSlope_a = new TGeoPara("CBWallSlope_a", Acrylic_width/2., CBFrontWall_ydim/2., SlopedWall_zproj/2., 0, -15, 0);
+
+    // Acrylic mother shape definition
+    TGeoTranslation *FrontWallpos = new TGeoTranslation("FrontWallpos", -CBRearWall_xdim/2.-CBExtra_xdim+Acrylic_width+CBFrontWall_xdim/2., 0, -(SlopedWall_zproj+2*(CBTiny_zdim-Acrylic_width)+Acrylic_width)+BPoly_width);
+	FrontWallpos->RegisterYourself();
+	TGeoTranslation *Tiny1pos = new TGeoTranslation("Tiny1pos", (CBRearWall_xdim-Acrylic_width)/2., 0, -CBTiny_zdim/2.+BPoly_width/2.);
+	Tiny1pos->RegisterYourself();
+	TGeoTranslation *SlopeWallpos = new TGeoTranslation("SlopeWallpos", (CBRearWall_xdim+Acrylic_width)/2.+Acrylic_width+SlopedWall_zproj/(2*TMath::Tan(TMath::DegToRad()*85.)),0, -CBTiny_zdim-SlopedWall_zproj/2.+Acrylic_width/2.+BPoly_width);
+	SlopeWallpos->RegisterYourself();
+	TGeoTranslation *Tiny2pos = new TGeoTranslation("Tiny2pos", 3*Acrylic_width+CBRearWall_xdim/2.+Acrylic_width/2.+SlopedWall_zproj/(TMath::Tan(TMath::DegToRad()*85.)), 0, -(SlopedWall_zproj+2*(CBTiny_zdim-Acrylic_width)+Acrylic_width)+CBTiny_zdim/2.+BPoly_width);
+	Tiny2pos->RegisterYourself();
+	TGeoTranslation *CBExtraLatpos = new TGeoTranslation("CBExtraLatpos", -CBRearWall_xdim/2.+Acrylic_width/2., 0, Acrylic_width/2.+(CBExtra_zdim-2*Acrylic_width)/2.);
+	CBExtraLatpos->RegisterYourself();
+	TGeoTranslation *CBExtraFrontpos = new TGeoTranslation("CBExtraFrontpos", -CBRearWall_xdim/2.+Acrylic_width-CBExtra_xdim/2., 0, CBExtra_zdim-Acrylic_width);
+	CBExtraFrontpos->RegisterYourself();
+	TGeoTranslation *CBLateralpos = new TGeoTranslation("CBLateralpos", -CBRearWall_xdim/2.-CBExtra_xdim+Acrylic_width+Acrylic_width/2., 0, CBExtra_zdim-CBLatWall_zdim/2.-Acrylic_width/2.);
+	CBLateralpos->RegisterYourself();
+    
+    // Acrylic mother volume definition
+    	TGeoCompositeShape *COLDBOXA = new TGeoCompositeShape("COLDBOXA", "CBWallDownstream+(CBFrontWall_a:FrontWallpos)+(CBTiny1_a:Tiny1pos)+(CBWallSlope_a:SlopeWallpos)+(CBTiny2_a:Tiny2pos)+(CBExtraLat_a:CBExtraLatpos)+(CBExtraFront_a:CBExtraFrontpos)+(CBLateral_a:CBLateralpos)");
+	TGeoVolume *volCOLDBOXA = new TGeoVolume("volCOLDBOXA", COLDBOXA, Acrylic);
+    
+
+    // ************************ BORATED POLYETHYLENE
+    	Float_t CBFrontWall_xdim_b	= CBFrontWall_xdim-2*Acrylic_width-BPoly_width;		// cm
+	Float_t CBFrontWall_ydim_b	= CBFrontWall_ydim-BPoly_width;
+	Float_t CBLatWall_zdim_b	= CBLatWall_zdim-2*Acrylic_width; 	// cm
+	Float_t CBExtra_xdim_b		= CBExtra_xdim-2*Acrylic_width;		// cm
+	Float_t CBRearWall_xdim_b	= CBRearWall_xdim-Acrylic_width;
+    // Shapes definition
+    TGeoBBox *CBFrontWall_b 	= new TGeoBBox("CBFrontWall_b", CBFrontWall_xdim_b/2.+(Acrylic_width-BPoly_width)/10., CBFrontWall_ydim_b/2., BPoly_width/2.); // (Acrylic_width-BPoly_width)/10. is due to approximations, I guess
+	TGeoBBox *CBLateral_b 		= new TGeoBBox("CBLateral_b", BPoly_width/2., CBFrontWall_ydim_b/2., (CBLatWall_zdim-2*BPoly_width)/2.-Acrylic_width);
+	TGeoBBox *CBExtraFront_b	= new TGeoBBox("CBExtraFront_b", CBExtra_xdim_b/2., CBFrontWall_ydim_b/2., BPoly_width/2.);
+	TGeoBBox *CBExtraLat_b		= new TGeoBBox("CBExtraLat_b", BPoly_width/2., CBFrontWall_ydim_b/2., (CBExtra_zdim-Acrylic_width-BPoly_width)/2.);
+	TGeoBBox *CBTiny1_b		= new TGeoBBox("CBTiny1_b", BPoly_width/2., CBFrontWall_ydim_b/2., (CBTiny_zdim-Acrylic_width-BPoly_width)/2.);
+	TGeoBBox *CBTiny2_b		= new TGeoBBox("CBTiny2_b", BPoly_width/2., CBFrontWall_ydim_b/2., (CBTiny_zdim-Acrylic_width)/2.);
+	TGeoBBox *CBRearWall_b		= new TGeoBBox("CBRearWall_b", CBRearWall_xdim_b/2., CBFrontWall_ydim_b/2., BPoly_width/2.);
+
+    	TGeoPara *CBWallSlope_b = new TGeoPara("CBWallSlope_b", BPoly_width/2., CBFrontWall_ydim_b/2., SlopedWall_zproj/2., 0, -15, 0);
+
+    // Borated Polyethylene mother shape definition
+    TGeoTranslation *FrontWallpos_b = new TGeoTranslation("FrontWallpos_b", -CBRearWall_xdim_b/2.-CBExtra_xdim_b+BPoly_width+CBFrontWall_xdim_b/2.+0.1, 0,-SlopedWall_zproj-(CBTiny_zdim-Acrylic_width+BPoly_width)); // +0.1 is due to approximations, I guess 
+	FrontWallpos_b->RegisterYourself();
+	TGeoTranslation *Tiny1pos_b = new TGeoTranslation("Tiny1pos_b", CBRearWall_xdim_b/2.+BPoly_width/2., 0, -BPoly_width/2.);
+	Tiny1pos_b->RegisterYourself();
+	TGeoTranslation *SlopeWallpos_b = new TGeoTranslation("SlopeWallpos_b", SlopedWall_zproj/(2*TMath::Tan(TMath::DegToRad()*85.))+CBRearWall_xdim_b/2.+3*BPoly_width,0, -BPoly_width/2.-SlopedWall_zproj/2.-(CBTiny_zdim-Acrylic_width-BPoly_width)/2.);
+	SlopeWallpos_b->RegisterYourself();
+	TGeoTranslation *Tiny2pos_b = new TGeoTranslation("Tiny2pos_b", 5*BPoly_width+CBRearWall_xdim/2.+SlopedWall_zproj/(TMath::Tan(TMath::DegToRad()*85.))-(Acrylic_width-BPoly_width)/2., 0, -SlopedWall_zproj-(CBTiny_zdim-Acrylic_width));
+	Tiny2pos_b->RegisterYourself();
+	TGeoTranslation *CBExtraLatpos_b = new TGeoTranslation("CBExtraLatpos_b", -CBRearWall_xdim_b/2.+BPoly_width/2., 0, (CBExtra_zdim-Acrylic_width)/2.);
+	CBExtraLatpos_b->RegisterYourself();
+	TGeoTranslation *CBExtraFrontpos_b = new TGeoTranslation("CBExtraFrontpos_b", -CBRearWall_xdim_b/2.+BPoly_width-CBExtra_xdim_b/2., 0, CBExtra_zdim-Acrylic_width);
+	CBExtraFrontpos_b->RegisterYourself();
+	TGeoTranslation *CBLateralpos_b = new TGeoTranslation("CBLateralpos_b", -CBRearWall_xdim_b/2.-CBExtra_xdim_b+BPoly_width+BPoly_width/2., 0, CBExtra_zdim-CBLatWall_zdim_b/2.+BPoly_width/2.-Acrylic_width);
+	CBLateralpos_b->RegisterYourself();
+    
+	// Borated Polyethylene mother volume definition
+	TGeoCompositeShape *COLDBOXB = new TGeoCompositeShape("COLDBOXB","CBRearWall_b+(CBTiny1_b:Tiny1pos_b)+(CBExtraLat_b:CBExtraLatpos_b)+(CBWallSlope_b:SlopeWallpos_b)+(CBTiny2_b:Tiny2pos_b)+(CBExtraFront_b:CBExtraFrontpos_b)+(CBLateral_b:CBLateralpos_b)+(CBFrontWall_b:FrontWallpos_b)");
+    	TGeoVolume *volCOLDBOXB = new TGeoVolume("volCOLDBOXB", COLDBOXB, Bor30Poly);
+    	
+
+	// Acrylic Roof shape definition
+	Double_t Roof4_averts [8][2];
+	Roof4_averts[0][0] = 0.; Roof4_averts[0][1] = 0.;
+	Roof4_averts[1][0] = 0.; Roof4_averts[1][1] = Acrylic_width;
+	Roof4_averts[2][0] = SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)); Roof4_averts[2][1] = Acrylic_width;
+	Roof4_averts[3][0] = SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)); Roof4_averts[3][1] = 0;
+	Roof4_averts[4][0] = 0; Roof4_averts[4][1] = 0;
+	Roof4_averts[5][0] = 0; Roof4_averts[5][1] = Acrylic_width;
+	Roof4_averts[6][0] = 0; Roof4_averts[6][1] = Acrylic_width;
+	Roof4_averts[7][0] = 0; Roof4_averts[7][1] = 0;
+	
+	TGeoBBox *CBRoof1_a 	= new TGeoBBox("CBRoof1_a", CBExtra_xdim/2., Acrylic_width/2., CBLatWall_zdim/2.);
+	TGeoBBox *CBRoof2_a	= new TGeoBBox("CBRoof2_a", (CBRearWall_xdim-Acrylic_width)/2., Acrylic_width/2., (CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.);
+	TGeoBBox *CBRoof3_a	= new TGeoBBox("CBRoof3_a", (SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)))/2., Acrylic_width/2., CBTiny_zdim/2.);
+	TGeoArb8 *CBRoof4_a	= new TGeoArb8("CBRoof4_a", SlopedWall_zproj/2., (Double_t*) Roof4_averts);
+
+	TGeoTranslation *Roof1_apos = new TGeoTranslation("Roof1_apos", -(CBRearWall_xdim-Acrylic_width)/2.-CBExtra_xdim/2., 0, CBExtra_zdim/2.-Acrylic_width/2.);
+	Roof1_apos->RegisterYourself();
+	TGeoTranslation *Roof3_apos = new TGeoTranslation("Roof3_apos", (CBRearWall_xdim-Acrylic_width)/2.+(SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)))/2., 0, -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+CBTiny_zdim/2.);
+	Roof3_apos->RegisterYourself();
+	TGeoTranslation *Roof4_apos = new TGeoTranslation("Roof4_apos", (CBRearWall_xdim-Acrylic_width)/2., -Acrylic_width/2., -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+CBTiny_zdim+SlopedWall_zproj/2.);
+	Roof4_apos->RegisterYourself();
+
+	// Acrylic roof volume definition
+	TGeoCompositeShape *CBRoof_a = new TGeoCompositeShape("CBRoof_a", "CBRoof2_a+(CBRoof1_a:Roof1_apos)+(CBRoof3_a:Roof3_apos)+(CBRoof4_a:Roof4_apos)");
+	TGeoVolume *volCBRoof_a = new TGeoVolume("volCBRoof_a", CBRoof_a, Acrylic);
+	
+	
+	// Borated Polythylene Roof shape definition
+	Double_t Roof4_bverts [8][2];
+	Roof4_bverts[0][0] = 0.; Roof4_bverts[0][1] = 0.;
+	Roof4_bverts[1][0] = 0.; Roof4_bverts[1][1] = BPoly_width;
+	Roof4_bverts[2][0] = SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)); Roof4_bverts[2][1] = BPoly_width;
+	Roof4_bverts[3][0] = SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)); Roof4_bverts[3][1] = 0;
+	Roof4_bverts[4][0] = 0; Roof4_bverts[4][1] = 0;
+	Roof4_bverts[5][0] = 0; Roof4_bverts[5][1] = BPoly_width;
+	Roof4_bverts[6][0] = 0; Roof4_bverts[6][1] = BPoly_width;
+	Roof4_bverts[7][0] = 0; Roof4_bverts[7][1] = 0;
+
+	TGeoBBox *CBRoof1_b 	= new TGeoBBox("CBRoof1_b", CBExtra_xdim_b/2., BPoly_width/2., CBLatWall_zdim_b/2.);
+	TGeoBBox *CBRoof2_b	= new TGeoBBox("CBRoof2_b", (CBRearWall_xdim_b-BPoly_width)/2.+BPoly_width/2., BPoly_width/2., (CBLatWall_zdim_b-CBExtra_zdim+Acrylic_width)/2.);
+	TGeoBBox *CBRoof3_b	= new TGeoBBox("CBRoof3_b", (SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)))/2., BPoly_width/2., (CBTiny_zdim-Acrylic_width)/2.);
+	TGeoArb8 *CBRoof4_b	= new TGeoArb8("CBRoof4_b", SlopedWall_zproj/2., (Double_t*) Roof4_bverts);
+
+	TGeoTranslation *Roof1_bpos = new TGeoTranslation("Roof1_bpos", -(CBRearWall_xdim-Acrylic_width)/2.-CBExtra_xdim_b/2., 0, CBExtra_zdim/2.-Acrylic_width/2.);
+	Roof1_bpos->RegisterYourself();
+	TGeoTranslation *Roof3_bpos = new TGeoTranslation("Roof3_bpos", (CBRearWall_xdim-Acrylic_width)/2.+(SlopedWall_zproj*(TMath::Tan(TMath::DegToRad()*15.)))/2., 0, -(CBLatWall_zdim_b-CBExtra_zdim+Acrylic_width)/2.+(CBTiny_zdim-Acrylic_width)/2.);
+	Roof3_bpos->RegisterYourself();
+	TGeoTranslation *Roof4_bpos = new TGeoTranslation("Roof4_bpos", (CBRearWall_xdim-Acrylic_width)/2., -BPoly_width/2., -(CBLatWall_zdim_b-CBExtra_zdim+Acrylic_width)/2.+CBTiny_zdim-Acrylic_width+SlopedWall_zproj/2.);
+	Roof4_bpos->RegisterYourself();
+
+	// Borated Polyethylene volume definition
+	TGeoCompositeShape *CBRoof_b = new TGeoCompositeShape("CBRoof_b", "CBRoof2_b+(CBRoof1_b:Roof1_bpos)+(CBRoof3_b:Roof3_bpos)+(CBRoof4_b:Roof4_bpos)");
+	TGeoVolume *volCBRoof_b = new TGeoVolume("volCBRoof_b", CBRoof_b, Bor30Poly);
+	
+	// Volumes positioning
+	TGeoVolumeAssembly *volColdBox = new TGeoVolumeAssembly("volColdBox");
+	volCOLDBOXA->SetLineColor(kGray-1);
+	volCOLDBOXA->SetTransparency(50);
+	volCOLDBOXB->SetLineColor(kGray-1);
+	volCOLDBOXB->SetTransparency(50);
+	volCBRoof_a->SetLineColor(kGray-1);
+	volCBRoof_a->SetTransparency(50);
+	volCBRoof_b->SetLineColor(kGray-1);
+	volCBRoof_b->SetTransparency(50);
+	
+    	volColdBox->AddNode(volCOLDBOXA, 0, 0);
+	volColdBox->AddNode(volCOLDBOXB, 0, new TGeoTranslation(-BPoly_width-Acrylic_width/2., -BPoly_width/2., -Acrylic_width/2.-BPoly_width/2.));
+	volColdBox->AddNode(volCBRoof_a, 0, new TGeoTranslation(Acrylic_width/2., CBFrontWall_ydim/2.+Acrylic_width/2., -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+Acrylic_width/2.));
+	volColdBox->AddNode(volCBRoof_b, 0, new TGeoTranslation(-Acrylic_width/2., CBFrontWall_ydim/2.-BPoly_width/2., -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+Acrylic_width/2.));
+
+	displacement = edge_Iron[1] - TVector3(fFeBlockX/2,-fFeBlockY/2,-fFeBlockZ/2);
+	volMuFilter->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5, displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2., displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1.));
+	LOG(INFO) << "++++ColBox position (x, y, z): " << displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5 << "\t" << displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2. << "\t" << displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1;
+
 }
 
 Bool_t  MuFilter::ProcessHits(FairVolume* vol)
