@@ -557,13 +557,13 @@ void MuFilter::ConstructGeometry()
 	// Volumes positioning
 	TGeoVolumeAssembly *volColdBox = new TGeoVolumeAssembly("volColdBox");
 	volCOLDBOXA->SetLineColor(kGray-1);
-	volCOLDBOXA->SetTransparency(50);
+	volCOLDBOXA->SetTransparency(60);
 	volCOLDBOXB->SetLineColor(kGray-1);
-	volCOLDBOXB->SetTransparency(50);
+	volCOLDBOXB->SetTransparency(60);
 	volCBRoof_a->SetLineColor(kGray-1);
-	volCBRoof_a->SetTransparency(50);
+	volCBRoof_a->SetTransparency(60);
 	volCBRoof_b->SetLineColor(kGray-1);
-	volCBRoof_b->SetTransparency(50);
+	volCBRoof_b->SetTransparency(60);
 	
     	volColdBox->AddNode(volCOLDBOXA, 0, 0);
 	volColdBox->AddNode(volCOLDBOXB, 0, new TGeoTranslation(-BPoly_width-Acrylic_width/2., -BPoly_width/2., -Acrylic_width/2.-BPoly_width/2.));
