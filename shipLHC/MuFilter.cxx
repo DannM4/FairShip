@@ -418,14 +418,9 @@ void MuFilter::ConstructGeometry()
 	Float_t SlopedWall_zproj	= 110.0;	// cm	
 	Float_t CBRearWall_xdim		= CBFrontWall_xdim-SlopedWall_zproj*TMath::Tan(TMath::DegToRad()*15.)-CBExtra_xdim+Acrylic_width;
 
-    	Float_t FeX		= 80.;
-	Float_t FeY		= 60.;
-	Float_t FeZ		= 20.;
-
-
     // ************************ ACRYLIC
     // Shapes definition
-    	TGeoBBox *FeBlock_cb 	 	= new TGeoBBox("FeBlock_cb",FeX/2, FeY/2, FeZ/2);
+    	TGeoBBox *FeBlock_cb 	 	= new TGeoBBox("FeBlock_cb",fFeBlockX/2, fFeBlockY/2, fFeBlockZ/2);
 	TGeoBBox *CBFrontWall_a 	= new TGeoBBox("CBFrontWall_a", CBFrontWall_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
 	TGeoBBox *CBLateral_a 		= new TGeoBBox("CBLateral_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBLatWall_zdim-2*Acrylic_width)/2.);
 	TGeoBBox *CBExtraFront_a	= new TGeoBBox("CBExtraFront_a", CBExtra_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
@@ -434,7 +429,7 @@ void MuFilter::ConstructGeometry()
 	TGeoBBox *CBTiny2_a		= new TGeoBBox("CBTiny2_a", Acrylic_width/2., CBFrontWall_ydim/2., (CBTiny_zdim-Acrylic_width)/2.);
 	TGeoBBox *CBRearWall_a		= new TGeoBBox("CBRearWall_a", CBRearWall_xdim/2., CBFrontWall_ydim/2., Acrylic_width/2.);
 
-    	TGeoTranslation *CBWallpos = new TGeoTranslation("CBWallpos", (CBRearWall_xdim-FeX)/2. - 28.5, (FeY-CBFrontWall_ydim)/2., 0);
+    	TGeoTranslation *CBWallpos = new TGeoTranslation("CBWallpos", (CBRearWall_xdim-fFeBlockX)/2. - 28.5, (fFeBlockY-CBFrontWall_ydim)/2., 0);
 	CBWallpos->RegisterYourself();
 
 	TGeoCompositeShape *CBWallDownstream = new TGeoCompositeShape("CBWallDownstream", "CBRearWall_a-(FeBlock_cb:CBWallpos)");
@@ -570,9 +565,8 @@ void MuFilter::ConstructGeometry()
 	volColdBox->AddNode(volCBRoof_a, 0, new TGeoTranslation(Acrylic_width/2., CBFrontWall_ydim/2.+Acrylic_width/2., -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+Acrylic_width/2.));
 	volColdBox->AddNode(volCBRoof_b, 0, new TGeoTranslation(-Acrylic_width/2., CBFrontWall_ydim/2.-BPoly_width/2., -(CBLatWall_zdim-CBExtra_zdim+Acrylic_width)/2.+Acrylic_width/2.));
 
-	displacement = edge_Iron[1] - TVector3(fFeBlockX/2,-fFeBlockY/2,-fFeBlockZ/2);
+	displacement = edge_Iron[1] - TVector3(fFeBlockX/2,-fFeBlockY/2,-fFeBlockZ/2); // positioning w.r.t. 1st Fe block
 	volMuFilter->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5, displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2., displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1.));
-	//LOG(INFO) << "++++ColBox position (x, y, z): " << displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5 << "\t" << displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2. << "\t" << displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1;
 
 }
 
