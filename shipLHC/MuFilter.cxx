@@ -404,8 +404,8 @@ void MuFilter::ConstructGeometry()
 	// COLDBOX GEOM
 	InitMedium("Borated30polyethylene");
 	TGeoMedium *Bor30Poly =gGeoManager->GetMedium("Borated30polyethylene");
-	InitMedium("Epoxy");
-	TGeoMedium *Acrylic =gGeoManager->GetMedium("Epoxy");
+	InitMedium("PMMA");
+	TGeoMedium *Acrylic =gGeoManager->GetMedium("PMMA");
 
 	Float_t Acrylic_width		= 5.0; 		// cm
 	Float_t BPoly_width		= 4.0; 		// cm
@@ -572,7 +572,7 @@ void MuFilter::ConstructGeometry()
 
 	displacement = edge_Iron[1] - TVector3(fFeBlockX/2,-fFeBlockY/2,-fFeBlockZ/2);
 	volMuFilter->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5, displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2., displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1.));
-	LOG(INFO) << "++++ColBox position (x, y, z): " << displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5 << "\t" << displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2. << "\t" << displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1;
+	//LOG(INFO) << "++++ColBox position (x, y, z): " << displacement.X()-(CBRearWall_xdim-fFeBlockX)/2.+28.5 << "\t" << displacement.Y()+(CBFrontWall_ydim-fFeBlockY)/2. << "\t" << displacement.Z()+Acrylic_width-fFeBlockZ/2.-BPoly_width+1;
 
 }
 
