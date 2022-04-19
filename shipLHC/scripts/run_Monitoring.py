@@ -16,6 +16,9 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument("-A", "--auto", dest="auto", help="run in auto mode online monitoring",default=False,action='store_true')
+parser.add_argument("--Nupdate", dest="Nupdate", help="frequence of updating online plots",default=100,type=int)
+parser.add_argument("--Nlast",      dest="Nlast", help="last N events to analyze on file",default=10,type=int)
+
 parser.add_argument("-M", "--online", dest="online", help="online mode",default=False,action='store_true')
 parser.add_argument("--server", dest="server", help="xrootd server",default=os.environ["EOSSHIP"])
 parser.add_argument("-r", "--runNumber", dest="runNumber", help="run number", type=int,default=-1)
@@ -56,9 +59,10 @@ def currentRun():
             f.close()
       for l in Lcrun:
             if not l.find('FINISHED')<0:
-               print("DAQ not running. Don't know which file to open, stop.")
+               print("DAQ not running. Don't know which file to open.")
                print(Lcrun)
-               os._exit(1)
+               curRun,curPart ="",""
+               break
             if not l.find('/home/snd/snd/') < 0:
                  tmp = l.split('/')
                  curRun = tmp[len(tmp)-2]
@@ -72,7 +76,12 @@ if options.auto:
    from XRootD import client
 # search for current run
    if options.runNumber < 0:
-        curRun,curPart =  currentRun()
+        curRun = ""
+        while curRun.find('run') < 0:
+               curRun,curPart =  currentRun()
+               if curRun.find('run') < 0:
+                   print("sleep 300sec.",time.ctime())
+                   time.sleep(300)
         options.runNumber = int(curRun.split('_')[1])
         options.partition = int(curPart.split('_')[1].split('.')[0])
 else:
@@ -117,7 +126,7 @@ if not options.auto:   # default online/offline mode
    if options.nEvents>0:
        for m in monitorTasks:
           monitorTasks[m].Plot()
-
+   M.publishRootFile()
 else: 
    """ auto mode
        check for open data file on the online machine
@@ -127,16 +136,14 @@ else:
          check every 5 seconds: if no new file re-open again
          if new file, finish run, publish histograms, and restart with new file
    """
-
-   dN = 10
-   Nupdate = 10000
    N0 = 0
    lastFile = M.converter.fiN.GetName()
    tmp = lastFile.split('/')
    lastRun  = tmp[len(tmp)-2]
    lastPart = tmp[len(tmp)-1]
    nLast = options.nEvents
-   nStart = nLast-dN
+   nStart = nLast-options.Nlast
+   M.updateHtml()
    while 1>0:
       for n in range(nStart,nLast):
         event = M.GetEvent(n)
@@ -145,31 +152,37 @@ else:
         for m in monitorTasks:
            monitorTasks[m].ExecuteEvent(M.eventTree)
 # update plots
-        if N0%Nupdate==0:
+        if N0%options.Nupdate==0:
            for m in monitorTasks:
                monitorTasks[m].Plot()
+           M.publishRootFile()
 
       M.converter.fiN = ROOT.TFile.Open(lastFile)
       newEntries = M.converter.fiN.event.GetEntries()
       if newEntries>nLast:
-         nStart = max(nLast,newEntries-dN)
+         nStart = max(nLast,newEntries-options.Nlast)
          nLast = newEntries
          continue
       else:  
       # check if file has changed
-         currentRun,currentPart =  currentRun()
-         if not currentRun == lastRun:
+         curRun,curPart =  currentRun()
+         while curRun.find('run') < 0:
+               curRun,curPart =  currentRun()
+               if curRun.find('run') < 0:  
+                   print("sleep 300sec.",time.ctime())
+                   time.sleep(300)
+         if not curRun == lastRun:
             for m in monitorTasks:
                monitorTasks[m].Plot()
             print("run ",lastRun," has finished.")
             quit()  # reinitialize everything with new run number
-         if not currentPart == lastPart:
-            lastPart = currentPart
-            lastFile = options.server+ l
+         if not curPart == lastPart:
+            lastPart = curPart
+            lastFile = options.server+options.path+lastRun+"/"+ lastPart
             M.converter.fiN = ROOT.TFile.Open(lastFile)
          else:
             time.sleep(30) # sleep 30 seconds and check for new events
-            print('DAQ inactive for 30sec')
+            print('DAQ inactive for 30sec. Last event = ',M.converter.fiN.event.GetEntries(), curRun,curPart,N0)
             nStart = nLast
 
 
