@@ -256,6 +256,17 @@ with ConfigRegistry.register_config("basic") as c:
         c.MuFilter.VandUpPropSpeed    = 12.5*u.cm/u.nanosecond
         c.MuFilter.DsPropSpeed        = 14.3*u.cm/u.nanosecond
 
+	#COLDBOX configuration
+        c.MuFilter.Acrylic_width = 5.0*u.cm
+        c.MuFilter.BPoly_width = 4.0*u.cm
+        c.MuFilter.CBFrontWall_xdim = 219.*u.cm
+        c.MuFilter.CBFrontWall_ydim = 170.72*u.cm-c.MuFilter.Acrylic_width
+        c.MuFilter.CBLatWall_zdim = 176.0*u.cm
+        c.MuFilter.CBTiny_zdim = 17.0*u.cm
+        c.MuFilter.CBExtra_zdim = 41.0*u.cm
+        c.MuFilter.CBExtra_xdim = 67.5 *u.cm
+        c.MuFilter.SlopedWall_zproj = 110.0*u.cm
+	
         c.Floor = AttrDict(z=48000.*u.cm) # to place tunnel in SND_@LHC coordinate system
         c.Floor.DX = 1.0*u.cm 
         c.Floor.DY = -4.5*u.cm #  subtract 4.5cm to avoid overlaps 
