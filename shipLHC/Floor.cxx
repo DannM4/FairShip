@@ -472,7 +472,7 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
 	TGeoBBox *CBTiny2_a			  = new TGeoBBox("CBTiny2_a", fAcrylicWidth/2., fCBFrontWallYDim/2., (fCBTinyZDim-fAcrylicWidth)/2.);
 	TGeoBBox *CBRearWall_a		= new TGeoBBox("CBRearWall_a", fCBRearWallXDim/2., fCBFrontWallYDim/2., fAcrylicWidth/2.);
 
-  TGeoTranslation *CBWallpos = new TGeoTranslation("CBWallpos", (fCBRearWallXDim-fFeBlockX)/2. - 28.5, (fFeBlockY-fCBFrontWallYDim)/2., 0);
+	TGeoTranslation *CBWallpos = new TGeoTranslation("CBWallpos", (fCBRearWallXDim-fFeBlockX)/2. - 28.5, -(fCBFrontWallYDim-fFeBlockY)/2.-(9.9756+0.0674693+0.000456151), 0);
 	CBWallpos->RegisterYourself();
 
 	TGeoCompositeShape *CBWallDownstream = new TGeoCompositeShape("CBWallDownstream", "CBRearWall_a-(FeBlock_cb:CBWallpos)");
@@ -608,7 +608,7 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
 
 	displacement = TVector3(-37.79 - 1.40082, 44.66, 367.96); // taken from MuFilter.cxx "edge_Iron[1]-TVector3(FeX, FeY, FeZ)" EDIT: 1.40082 for overlap fix
 	LOG(INFO) << "displacement (x, y, z) " << displacement.X() << "\t" << displacement.Y() << "\t" << displacement.Z();
-	tunnel->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(fCBRearWallXDim-fFeBlockX)/2.+28.5, displacement.Y()+(fCBFrontWallYDim-fFeBlockY)/2., displacement.Z()+fAcrylicWidth-fFeBlockZ/2.-fBPolyWidth+1.));
+	tunnel->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(fCBRearWallXDim-fFeBlockX)/2.+28.5, displacement.Y()+(fCBFrontWallYDim-fFeBlockY)/2.+9.9756+0.0674693+0.000456151, displacement.Z()+fAcrylicWidth-fFeBlockZ/2.-fBPolyWidth+1.));
 
 
 if (SND_Z<0.1){ // for H6 and H8 testbeam setup
