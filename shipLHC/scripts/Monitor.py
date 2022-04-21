@@ -180,6 +180,13 @@ class Monitoring():
 # add scifi cluster
             self.clusScifi   = ROOT.TClonesArray("sndCluster")
             self.clusScifiBranch    = self.eventTree.Branch("Cluster_Scifi",self.clusScifi,32000,1)
+   def updateSource(self,fname):
+   # only needed in auto mode
+      self.converter.fiN = ROOT.TFile.Open(fname)
+      for b in self.converter.fiN.GetListOfKeys():
+            name = b.GetName()
+            if name.find('board')!=0: continue
+            self.converter.boards[name]=self.converter.fiN.Get(name)
 
    def makeScifiCluster(self):
       self.clusScifi.Delete()
@@ -254,7 +261,7 @@ class Monitoring():
            if not L.find(self.runNr)<0: return
            if L.find("https://snd-lhc-monitoring.web.cern.ch/online")>0 and not found:
               r = str(self.options.runNumber)
-              Lnew = '            <li> <a href="https://snd-lhc-monitoring.web.cern.ch/online/run.html?file=run'+self.runNr+'.root">run '+r+'</a> \n'
+              Lnew = '            <li> <a href="https://snd-lhc-monitoring.web.cern.ch/online/run.html?file=run'+self.runNr+'.root&lastcycle">run '+r+'</a> \n'
               tmp.write(Lnew)
               found = True
            tmp.write(L)
