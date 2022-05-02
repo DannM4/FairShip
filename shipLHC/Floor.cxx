@@ -590,6 +590,18 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
 	TGeoCompositeShape *CBRoof_b = new TGeoCompositeShape("CBRoof_b", "CBRoof2_b+(CBRoof1_b:Roof1_bpos)+(CBRoof3_b:Roof3_bpos)+(CBRoof4_b:Roof4_bpos)");
 	TGeoVolume *volCBRoof_b = new TGeoVolume("volCBRoof_b", CBRoof_b, Bor30Poly);
 	
+	// Rear Cover shape definition
+	TGeoBBox *RearCov_a 	= new TGeoBBox("RearCov_a", 109.574671, (9.9756+0.0674693+0.000456151)/2., fAcrylicWidth/2.);
+	TGeoTranslation *CBWallpos_2 = new TGeoTranslation("CBWallpos_2", 109.574671-fFeBlockX/2. - 28.5, 0, 0);
+	CBWallpos_2->RegisterYourself();
+	TGeoBBox *RearCover_b 	= new TGeoBBox("RearCover_b", 109.574671-fAcrylicWidth, (9.9756+0.0674693+0.000456151)/2., fBPolyWidth/2.);
+	TGeoCompositeShape *RearCover_a = new TGeoCompositeShape("RearCover_a", "RearCov_a-(FeBlock_cb:CBWallpos_2)");
+	
+	// Rear Cover volume definition
+	TGeoVolume *volRearCover_a = new TGeoVolume("volRearCover_a", RearCover_a, Acrylic);
+	TGeoVolume *volRearCover_b = new TGeoVolume("volRearCover_b", RearCover_b, Bor30Poly);
+	
+	
 	// Volumes positioning
 	TGeoVolumeAssembly *volColdBox = new TGeoVolumeAssembly("volColdBox");
 	volCOLDBOXA->SetLineColor(kGray-1);
@@ -605,6 +617,8 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
 	volColdBox->AddNode(volCOLDBOXB, 0, new TGeoTranslation(-fBPolyWidth-fAcrylicWidth/2., -fBPolyWidth/2., -fAcrylicWidth/2.-fBPolyWidth/2.));
 	volColdBox->AddNode(volCBRoof_a, 0, new TGeoTranslation(fAcrylicWidth/2., fCBFrontWallYDim/2.+fAcrylicWidth/2., -(fCBLatWallZDim-fCBExtraZDim+fAcrylicWidth)/2.+fAcrylicWidth/2.));
 	volColdBox->AddNode(volCBRoof_b, 0, new TGeoTranslation(-fAcrylicWidth/2., fCBFrontWallYDim/2.-fBPolyWidth/2., -(fCBLatWallZDim-fCBExtraZDim+fAcrylicWidth)/2.+fAcrylicWidth/2.));
+	volColdBox->AddNode(volRearCover_a, 0, new TGeoTranslation(0, -fCBFrontWallYDim/2.-(9.9756+0.0674693+0.000456151)/2., 88-fAcrylicWidth/2.));
+	volColdBox->AddNode(volRearCover_b, 0, new TGeoTranslation(0, -fCBFrontWallYDim/2.-(9.9756+0.0674693+0.000456151)/2., 88-fAcrylicWidth-fBPolyWidth/2.));
 
 	displacement = TVector3(-37.79 - 1.40082, 44.66, 367.96); // taken from MuFilter.cxx "edge_Iron[1]-TVector3(FeX, FeY, FeZ)" EDIT: 1.40082 for overlap fix
 	tunnel->AddNode(volColdBox, 0, new TGeoTranslation(displacement.X()-(fCBRearWallXDim-fFeBlockX)/2.+28.5, displacement.Y()+(fCBFrontWallYDim-fFeBlockY)/2.+9.9756+0.0674693+0.000456151, displacement.Z()+fAcrylicWidth-fFeBlockZ/2.-fBPolyWidth+1.)); // +9.9756+0.0674693+0.000456151 added for VTI18 overlap fix
