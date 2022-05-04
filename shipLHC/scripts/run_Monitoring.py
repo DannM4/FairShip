@@ -3,11 +3,11 @@ import ROOT,os,sys,getopt,subprocess,atexit,time
 import Monitor
 import Scifi_monitoring
 import Mufi_monitoring
-import DAQ_monitoring
 import EventDisplay_Task
 import SndlhcMuonReco
 
 def pyExit():
+    if options.online:
        print("Make suicide until solution found for freezing")
        os.system('kill '+str(os.getpid()))
 atexit.register(pyExit)
@@ -21,7 +21,6 @@ parser.add_argument("--Nlast",      dest="Nlast", help="last N events to analyze
 parser.add_argument("--sudo", dest="sudo", help="update files on EOS",default=False,action='store_true')
 
 parser.add_argument("-M", "--online", dest="online", help="online mode",default=False,action='store_true')
-parser.add_argument("--batch", dest="batch", help="batch mode",default=False,action='store_true')
 parser.add_argument("--server", dest="server", help="xrootd server",default=os.environ["EOSSHIP"])
 parser.add_argument("-r", "--runNumber", dest="runNumber", help="run number", type=int,default=-1)
 parser.add_argument("-p", "--path", dest="path", help="run number",required=False,default="")
@@ -51,7 +50,7 @@ parser.add_argument("--interactive", dest="interactive", action='store_true',def
 options = parser.parse_args()
 
 options.dashboard = "currently_processed_file.txt"
-if options.auto or options.batch: ROOT.gROOT.SetBatch(True)
+if options.auto: ROOT.gROOT.SetBatch(True)
 
 def currentRun():
       with client.File() as f:
@@ -63,25 +62,24 @@ def currentRun():
             if not l.find('FINISHED')<0:
                print("DAQ not running. Don't know which file to open.")
                print(Lcrun)
-               curRun,curPart,start ="","",""
+               curRun,curPart ="",""
                break
             if not l.find('/home/snd/snd/') < 0:
                  tmp = l.split('/')
                  curRun = tmp[len(tmp)-2]
                  curPart = tmp[len(tmp)-1]
-                 start = Lcrun[1]
                  break
-      return curRun,curPart,start
+      return curRun,curPart
+
 
 if options.auto:
    options.online = True
    from XRootD import client
-   from XRootD.client.flags import DirListFlags, OpenFlags, MkDirFlags, QueryCode
 # search for current run
    if options.runNumber < 0:
         curRun = ""
         while curRun.find('run') < 0:
-               curRun,curPart,options.startTime =  currentRun()
+               curRun,curPart =  currentRun()
                if curRun.find('run') < 0:
                    print("sleep 300sec.",time.ctime())
                    time.sleep(300)
@@ -111,7 +109,6 @@ if options.nEvents < 0 :
     else:    options.nEvents = M.eventTree.GetEntries()
 
 monitorTasks = {}
-monitorTasks['daq']   = DAQ_monitoring.DAQ_boards()
 monitorTasks['Scifi_hitMaps']   = Scifi_monitoring.Scifi_hitMaps()
 monitorTasks['Mufi_hitMaps']   = Mufi_monitoring.Mufi_hitMaps()
 monitorTasks['Mufi_QDCcorellations']   = Mufi_monitoring.Mufi_largeVSsmall()
@@ -122,7 +119,7 @@ for m in monitorTasks:
     monitorTasks[m].Init(options,M)
 
 if not options.auto:   # default online/offline mode
-   for n in range(options.nStart,options.nStart+options.nEvents):
+   for n in range(options.nStart,options.nEvents):
      event = M.GetEvent(n)
      for m in monitorTasks:
         monitorTasks[m].ExecuteEvent(M.eventTree)
@@ -130,7 +127,7 @@ if not options.auto:   # default online/offline mode
    if options.nEvents>0:
        for m in monitorTasks:
           monitorTasks[m].Plot()
-   M.publishRootFile()
+   if options.sudo: M.publishRootFile()
 else: 
    """ auto mode
        check for open data file on the online machine
@@ -148,7 +145,6 @@ else:
    nLast = options.nEvents
    nStart = nLast-options.Nlast
    M.updateHtml()
-   M.updateSource(lastFile)
    while 1>0:
       for n in range(nStart,nLast):
         event = M.GetEvent(n)
@@ -169,9 +165,9 @@ else:
          nLast = newEntries
       else:  
       # check if file has changed
-         curRun,curPart,options.startTime  =  currentRun()
+         curRun,curPart =  currentRun()
          while curRun.find('run') < 0:
-               curRun,curPart,options.startTime  =  currentRun()
+               curRun,curPart =  currentRun()
                if curRun.find('run') < 0:  
                    print("sleep 300sec.",time.ctime())
                    time.sleep(300)

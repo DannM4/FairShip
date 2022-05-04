@@ -62,6 +62,8 @@ class ConvRawData : public FairTask
       map<vector<int>, map<string, double> > X_tdc{};
       map<string, map<string, map<string, int>> > boardMaps{};
       map<int, map<int, int> > MufiSystem{}; // <board_id_mu, <slot(tofpetID), s>
+      double chi2Max = 2000.;
+      double saturationLimit = 0.95;
       map<int, string > slots = { {0,"A"}, {1,"A"}, {2,"B"}, {3,"B"},
                                   {4,"C"}, {5,"C"}, {6,"D"}, {7,"D"} };
       map<int, map<int, int> > TofpetMap{};
@@ -82,17 +84,15 @@ class ConvRawData : public FairTask
       int frunNumber;
       int fnStart, fnEvents;
       int fheartBeat;
-      int withGeoFile, debug, stop, makeCalibration, online;
+      int withGeoFile, debug, stop;
       string fpath; 
-      int eventNumber;
-      double chi2Max, saturationLimit;
+      int eventNumber;  
     
       /** Output data **/
       FairEventHeader* fEventHeader;
       TClonesArray* fDigiSciFi;
       TClonesArray* fDigiMuFilter;
       TClonesArray* fClusScifi;
-      TClonesArray* fKalmanTracks;
     
       ConvRawData(const ConvRawData&);
       ConvRawData& operator=(const ConvRawData&);

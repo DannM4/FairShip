@@ -7,10 +7,15 @@ class reversChannelMapping:
  " detector ID and SiPM channel nr to online board/tofpet_id/tofpet_channel "
  def Init(self,path):
     with client.File() as f:
-        f.open(path+"/board_mapping.json")
+        server = os.environ['EOSSHIP']
+        f.open(server+path+"/board_mapping.json")
         status, jsonStr = f.read()
     self.boardMaps = boardMappingParser.getBoardMapping(jsonStr)
     self.slots = {0:'A',1:'A',2:'B',3:'B',4:'C',5:'C',6:'D',7:'D'}
+    with client.File() as f:
+        server = os.environ['EOSSHIP']
+        f.open(server+path+"/board_mapping.json")
+        status, jsonStr = f.read()
     self.MufiSystem = {}
     for b in self.boardMaps['MuFilter']:
         board_id = int(b.split('_')[1])
@@ -53,29 +58,10 @@ class reversChannelMapping:
         for slot in self.boardMaps['MuFilter'][board]:
            key = self.boardMaps['MuFilter'][board][slot]
            self.revBoardMaps['MuFilter'][key]=[board,slot]
-
-    self.revBoardMaps['Scifi'] = {}
-    for board in self.boardMaps['Scifi']:
-         station,mat = self.boardMaps['Scifi'][board]
-         if not station in self.revBoardMaps['Scifi']: self.revBoardMaps['Scifi'][station] = {}
-         self.revBoardMaps['Scifi'][station][mat] = board
-
 #
- def daqChannel(self,aHit,channel=0):
-    if type(aHit).__name__ == 'int':  fDetectorID  = aHit
-    else:                             fDetectorID  = aHit.GetDetectorID()
-    if not fDetectorID<1000000:    #scifi hit
-      s      =  fDetectorID//1000000
-      mat  =  (fDetectorID%100000)//10000
-      orientation = (fDetectorID%1000000)//100000
-      chan = fDetectorID%1000
-      sipm = (fDetectorID%10000)//1000
-      sipmChannel = chan + sipm*128
-      station = 'M'+str(s)+'X'
-      if orientation ==0 : station = 'M'+str(s)+'Y'
-      board = self.revBoardMaps['Scifi'][station][mat]
-      return {"sipmChannel":sipmChannel,"board":board}
-    else:
+ def daqChannel(self,aHit,channel):
+      if type(aHit).__name__ == 'int':  fDetectorID  = aHit
+      else:                                     fDetectorID  = aHit.GetDetectorID()
       subsystem    = fDetectorID//10000
       plane        = fDetectorID//1000 - 10*subsystem
       bar_number   = fDetectorID%1000
