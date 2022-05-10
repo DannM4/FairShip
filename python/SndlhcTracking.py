@@ -22,6 +22,7 @@ class Tracking(ROOT.FairTask):
    self.sigmaMufiDS_spatial = 0.3*u.cm
    self.Debug = False
    self.ioman = ROOT.FairRootManager.Instance()
+<<<<<<< HEAD
    sink = self.ioman.GetSink()
    self.event = sink.GetOutTree()
    if not self.event:
@@ -30,10 +31,34 @@ class Tracking(ROOT.FairTask):
          self.ioman.Register("Reco_MuonTracks", "", self.kalman_tracks, ROOT.kTRUE);
    else:
          self.kalman_tracks = sink.GetOutTree().Reco_MuonTracks 
+=======
+   self.sink = self.ioman.GetSink()
+   # online mode:         raw data in, converted data in output, Reco_MuonTracks defined in ConvRawData
+   # offline read only:   converted data in, no output
+   # offline read/write:  converted data in, converted data out
+   offlineRO   = False
+   online        = False
+   offlineRW   = False
+   if not self.sink.GetOutTree():     offlineRO = True
+   if not self.ioman.GetInTree():     online = True
+   if not online and not offlineRO: offlineRW = True
+
+   self.makeScifiClusters = False
+   if offlineRO or offlineRW:
+         self.event = self.ioman.GetInChain()     # should contain all digis, but not necessarily the tracks and scifi clusters
+         self.kalman_tracks = ROOT.TObjArray(10)
+         self.ioman.Register("Reco_MuonTracks", "", self.kalman_tracks, ROOT.kTRUE)  # user asks for tracking, independent if tracks exist in inputfile.
+         if not self.event.FindBranch("Cluster_Scifi"):   # no scifi clusters on input file, create them
+             self.makeScifiClusters = True
+             self.clusScifi   = ROOT.TObjArray(100);
+             self.ioman.Register("Cluster_Scifi","",self.clusScifi,ROOT.kTRUE)
+   if online:
+         self.event = self.sink.GetOutTree()
+         self.kalman_tracks = self.sink.GetOutTree().Reco_MuonTracks
+>>>>>>> a53433bc26bfddf605e2e07e638d6548b3545d54
 
    self.systemAndPlanes  = {1:2,2:5,3:7}
-   self.nPlanes = 8
-   self.nClusters = 11
+   self.MuFilterHits = self.event.Digi_MuFilterHits
    return 0
 
  def FinishEvent(self):
@@ -83,7 +108,11 @@ class Tracking(ROOT.FairTask):
       trackCandidates.append(hitlist)
     return trackCandidates
 
+<<<<<<< HEAD
  def Scifi_track(self):
+=======
+ def Scifi_track(self,nPlanes = 3, nClusters = 20,sigma=150*u.um,maxRes=50):
+>>>>>>> a53433bc26bfddf605e2e07e638d6548b3545d54
 # check for low occupancy and enough hits in Scifi
     trackCandidates = []
     stations = {}

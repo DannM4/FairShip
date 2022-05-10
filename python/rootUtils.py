@@ -183,7 +183,11 @@ def stripOffBranches(fout):
     else:  print("stripping failed, keep old file",os.path.abspath('.'))
     # os.system('mv '+sFile +' '+fout)
 def checkFileExists(x):
-    if x[0:4] == "/eos": f=gSystem.Getenv("EOSSHIP")+x
+    if x[0:4] == "/eos": 
+      if os.path.exists(os.environ['EOSSHIP']+x):
+        f=gSystem.Getenv("EOSSHIP")+x
+      else:
+        f=x
     else: f=x  
     test = TFile.Open(f)
     if not test: 
