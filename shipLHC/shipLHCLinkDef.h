@@ -18,5 +18,7 @@
 #pragma link C++ class sndCluster;
 #pragma link C++ class Magnet+;
 #pragma link C++ class MagnetPoint+;
+#pragma link C++ class AdvTarget+;
+#pragma link C++ class AdvTargetPoint+;
 #pragma link C++ class SNDLHCEventHeader;
 #endif
