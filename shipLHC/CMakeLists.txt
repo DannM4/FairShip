@@ -39,6 +39,8 @@ Magnet.cxx
 MagnetPoint.cxx
 AdvTarget.cxx
 AdvTargetPoint.cxx
+AdvMuFilter.cxx
+AdvMuFilterPoint.cxx
 SNDLHCEventHeader.cxx
 )
 
