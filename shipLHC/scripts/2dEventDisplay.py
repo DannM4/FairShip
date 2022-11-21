@@ -1074,7 +1074,7 @@ def fillNode(node, color=None):
 
 def drawInfo(pad, k, run, event, timestamp,moreEventInfo=[]):
    drawLogo = True
-   drawText = False
+   drawText = True
    if drawLogo:
       padLogo = ROOT.TPad("logo","logo",0.1,0.1,0.2,0.3)
       padLogo.SetFillStyle(4000)
