@@ -22,7 +22,7 @@ run = ROOT.FairRunSim()
 run.SetName(mcEngine)  # Transport engine
 run.SetOutputFile("dummy.root")  # Output file
 run.SetUserConfig("g4Config.C") # user configuration file default g4Config.C 
-rtdb = run.GetRuntimeDb() 
+#rtdb = run.GetRuntimeDb() 
 
 # -----Create geometry----------------------------------------------
 import shipLHC_conf as sndDet_conf
@@ -44,6 +44,6 @@ run.Init()
 # ------------------------------------------------------------------------
 run.CreateGeometryFile(options.geofile)
 # save detector parameters dictionary in geofile
-import saveBasicParameters
-saveBasicParameters.execute(options.geofile,snd_geo)
+#import saveBasicParameters
+#saveBasicParameters.execute(options.geofile,snd_geo)
 

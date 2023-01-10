@@ -174,7 +174,7 @@ void AdvTarget::ConstructGeometry()
         volAdvTarget->AddNode(volTargetWall, i, new TGeoTranslation(-EmWall0_survey.X()+(fTargetWallX-42.2)/2., EmWall0_survey.Y(), -TargetDiff+EmWall0_survey.Z()+i*(fTargetWallZ+fTTZ)+fTargetWallZ/2.));
         volAdvTarget->AddNode(volTTracker, i, new TGeoTranslation(-EmWall0_survey.X()+(fTargetWallX-42.2)/2., EmWall0_survey.Y(), -TargetDiff+EmWall0_survey.Z()+i*(fTargetWallZ+fTTZ)+fTargetWallZ+fTTZ/2.));
     }
-    LOG(INFO) <<"  Target X: "<< -EmWall0_survey.X()+(fTargetWallX-42.2)/2.<<"  Y: "<< EmWall0_survey.Y()<< "  Z: "<< EmWall0_survey.Z();
+    LOG(INFO) <<"  Target X: "<< -EmWall0_survey.X()+(fTargetWallX-42.2)/2.<<"  Y: "<< EmWall0_survey.Y()<< "  Z: "<< -TargetDiff+EmWall0_survey.Z()+4*(fTargetWallZ+fTTZ)+fTargetWallZ;
 }
 
 Bool_t  AdvTarget::ProcessHits(FairVolume* vol)
