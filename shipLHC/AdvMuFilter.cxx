@@ -297,8 +297,8 @@ void AdvMuFilter::ConstructGeometry()
 
     for(int i = 0; i< 20; i++)
     {
-        volAdvMuFilter->AddNode(volFeWall, i, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
-        volAdvMuFilter->AddNode(volMagFe, i, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
+        volAdvMuFilter->AddNode(volFeWall, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
+        volAdvMuFilter->AddNode(volMagFe, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
     }
     volAdvMuFilter->AddNode(volShortCoil, 0, new TGeoTranslation(0, fMuonSysPlaneY/2.+fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap));
     volAdvMuFilter->AddNode(volShortCoil, 1, new TGeoTranslation(0, -fMuonSysPlaneY/2.-fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap));
