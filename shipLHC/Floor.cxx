@@ -169,8 +169,10 @@ void Floor::ConstructGeometry()
 	InitMedium("Concrete");
 	TGeoMedium *concrete = gGeoManager->GetMedium("Concrete");
 	InitMedium("Rock");
+   InitMedium("iron");
+	TGeoMedium *Fe = gGeoManager->GetMedium("iron");
 	TGeoMedium *rock = gGeoManager->GetMedium("Rock");
-         InitMedium("vacuum");
+    InitMedium("vacuum");
 	TGeoMedium *vacuum = gGeoManager->GetMedium("vacuum");
 
         TGeoVolume *tunnel= new TGeoVolumeAssembly("Tunnel");
@@ -1121,6 +1123,46 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
                    new TGeoTranslation(displacement.X() - (fCBRearWallXDim - fFeBlockX) / 2. + 28.5,
                                        displacement.Y() - (fCBFrontWallYDim - fFeBlockY) / 2. + 121,
                                        displacement.Z() + fAcrylicWidth - fFeBlockZ / 2. - fBPolyWidth + 1.));
+       
+	Double_t fConcShieldX = 160;    //cm
+   Double_t fConcShieldY = 120;    //cm
+   Double_t fConcShieldZ = 80;     //cm
+
+   Double_t fIronShieldX = 160;    //cm
+   Double_t fIronShieldY = 120;    //cm
+   Double_t fIronShieldZ = 40;     //cm
+   TVector3 shield_displ;
+
+   TGeoVolumeAssembly *volShielding = new TGeoVolumeAssembly("volShielding");
+
+   TGeoVolume *volConcShield = gGeoManager->MakeBox("volConcShield", concrete, fConcShieldX/2., fConcShieldY/2., fConcShieldZ/2.);
+   TGeoVolume *volIronShield = gGeoManager->MakeBox("volIronShield", Fe, fIronShieldX/2., fIronShieldY/2., fIronShieldZ/2.);
+   volConcShield->SetLineColor(kGray);
+   volIronShield->SetLineColor(kRed+2);
+
+   volShielding->AddNode(volConcShield, 0, new TGeoTranslation(0, 0, fConcShieldZ/2.+fIronShieldZ/2.));
+   volShielding->AddNode(volIronShield, 0, new TGeoTranslation(0, 0, 0));
+
+   Double_t rotAngle = 90-75.6;
+
+   shield_displ = 
+      TVector3(17.79-80/2.+10, 12.77-9/2., 
+               552.97+1-40/2.+20.); // taken from MuFilter.cxx "edge_Iron[8]-TVector3(fFeBlockEndX/2,-fFeBlockEndY/2,-fFeBlockEndZ/2);
+   Double_t LOSMATRIX[9] = {TMath::Cos(TMath::DegToRad()*(-rotAngle)), 0, TMath::Sin(TMath::DegToRad()*(-rotAngle)),
+                           0, 1, 0,
+                           -TMath::Sin(TMath::DegToRad()*(-rotAngle)), 0, TMath::Cos(TMath::DegToRad()*(-rotAngle))};
+   //auto tunnel_los_rot      = new TGeoRotation("tunnel_los_rot", 0., 0., 0.); // angle between los and tunnel from Lukasz
+   auto tunnel_los_rot      = new TGeoRotation("tunnel_los_rot");
+   //tunnel_los_rot->RotateY(90-75.6);
+   tunnel_los_rot->SetMatrix(LOSMATRIX);
+   tunnel_los_rot->RegisterYourself();
+   auto tunnel_los_comb1 = new TGeoCombiTrans("tunnel_los_comb1", shield_displ.X()-60, 
+                              shield_displ.Y()+fConcShieldY/2.-9/2., 
+                              shield_displ.Z()+20+(fIronShieldZ/2.+50)/(TMath::Cos(TMath::DegToRad()*(rotAngle))), 
+                              tunnel_los_rot);
+   tunnel_los_comb1->RegisterYourself();
+   
+   tunnel->AddNode(volShielding, 0, tunnel_los_comb1);
 
 if (SND_Z<0.1){ // for H6 and H8 testbeam setup
    top->AddNode(detector, 0);
