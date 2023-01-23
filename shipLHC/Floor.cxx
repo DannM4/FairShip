@@ -1124,7 +1124,7 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
                                        displacement.Y() - (fCBFrontWallYDim - fFeBlockY) / 2. + 121,
                                        displacement.Z() + fAcrylicWidth - fFeBlockZ / 2. - fBPolyWidth + 1.));
    
-   Double_t fConcShieldX = 160;    //cm
+   Double_t fConcShieldX = 160+130;    //cm
    Double_t fConcShieldY = 120;    //cm
    Double_t fConcShieldZ = 80;     //cm
 
@@ -1140,7 +1140,7 @@ tunnel->AddNode(exitPlane,1, new TGeoTranslation(0,0,1000.));
    
    Double_t rotAngle = 90-75.6;
    
-   Double_t distX_1 = -35;
+   Double_t distX_1 = -35-130/2.;
    Double_t distY_1 = -12.77+9/2.-0.5;
    
    shield_displ = 
