@@ -261,8 +261,11 @@ void AdvMuFilter::ConstructGeometry()
     volFeWall->SetLineColor(kGreen-4);
     volMagFe->SetLineColor(kGreen);
     
-    Double_t fField = 1.5; // Tesla
+    //Double_t fField = 1.5; // Tesla
+    //fField = fField/10; // kGauss (complying with GEANT3)
+    Double_t fField = conf_floats["AdvMuFilter/Field"];
     TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
+    TGeoGlobalMagField::Instance()->SetField(magField);
     volMagFe->SetField(magField);
 
     TGeoVolume *volCoil = new TGeoVolume("volCoil", Coil, Cu);
@@ -289,6 +292,7 @@ void AdvMuFilter::ConstructGeometry()
     Double_t fMagnetsGap = 90+2.5; // cm
     Double_t FirstMagZ = fNplanes*(fFeZ+fFeGap);
     Double_t fShortCoilZ = fNplanes2*fFeZ;
+    Double_t fSpacing = 8.75; // cm
 
     TGeoBBox *ShortCoil = new TGeoBBox("ShortCoil", fCoilX/2., fCoilY/2., fShortCoilZ/2.);
     TGeoVolume *volShortCoil = new TGeoVolume("volShortCoil", ShortCoil, Cu);
@@ -297,11 +301,11 @@ void AdvMuFilter::ConstructGeometry()
 
     for(int i = 0; i< 20; i++)
     {
-        volAdvMuFilter->AddNode(volFeWall, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
-        volAdvMuFilter->AddNode(volMagFe, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap));
+        volAdvMuFilter->AddNode(volFeWall, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap+fSpacing));
+        volAdvMuFilter->AddNode(volMagFe, i+fNplanes, new TGeoTranslation(0, 0, FirstMagZ+fMagnetsGap+i*fFeZ-fFeGap+fSpacing));
     }
-    volAdvMuFilter->AddNode(volShortCoil, 0, new TGeoTranslation(0, fMuonSysPlaneY/2.+fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap));
-    volAdvMuFilter->AddNode(volShortCoil, 1, new TGeoTranslation(0, -fMuonSysPlaneY/2.-fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap));
+    volAdvMuFilter->AddNode(volShortCoil, 0, new TGeoTranslation(0, fMuonSysPlaneY/2.+fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap+fSpacing));
+    volAdvMuFilter->AddNode(volShortCoil, 1, new TGeoTranslation(0, -fMuonSysPlaneY/2.-fCoilY/2., fShortCoilZ/2.-fFeZ/2.+fMagnetsGap+FirstMagZ-fFeGap+fSpacing));
 
 
     // Trackers part
@@ -313,7 +317,7 @@ void AdvMuFilter::ConstructGeometry()
 	
     volAdvMuFilter->AddNode(volMagTracker, 0+fDetIDOffset, new TGeoTranslation(0, 0, FirstMagZ-fFeZ/2.-fFeGap+fMagTrackerZ/2.));
     volAdvMuFilter->AddNode(volMagTracker, 1+fDetIDOffset, new TGeoTranslation(0, 0, FirstMagZ-fFeZ/2.-fFeGap+fMagnetsGap-fMagTrackerZ/2.));
-    volAdvMuFilter->AddNode(volMagTracker, 2+fDetIDOffset, new TGeoTranslation(0, 0, FirstMagZ-fFeZ/2.-fFeGap+fMagnetsGap+fShortCoilZ+fMagTrackerZ/2.));
+    volAdvMuFilter->AddNode(volMagTracker, 2+fDetIDOffset, new TGeoTranslation(0, 0, FirstMagZ-fFeZ/2.-fFeGap+fMagnetsGap+fShortCoilZ+fMagTrackerZ/2.+2*fSpacing));
 }
 Bool_t  AdvMuFilter::ProcessHits(FairVolume* vol)
 {

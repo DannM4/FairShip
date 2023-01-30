@@ -328,3 +328,4 @@ with ConfigRegistry.register_config("basic") as c:
         c.AdvMuFilter.PlaneY = c.AdvMuFilter.WallY
         c.AdvMuFilter.PlaneZ = 2 * u.cm
         c.AdvMuFilter.nPlanes = 22
+        c.AdvMuFilter.Field = 1.5 * u.tesla
