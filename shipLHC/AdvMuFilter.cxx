@@ -266,6 +266,7 @@ void AdvMuFilter::ConstructGeometry()
     //Double_t fField = 1.5; // Tesla
     //fField = fField/10; // kGauss (complying with GEANT3)
     Double_t fField = conf_floats["AdvMuFilter/Field"];
+    LOG(INFO) << " Mag field: " << fField/10. << " Tesla" << endl;
     TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
     TGeoGlobalMagField::Instance()->SetField(magField);
     volMagFe->SetField(magField);
