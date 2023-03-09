@@ -333,10 +333,10 @@ with ConfigRegistry.register_config("basic") as c:
 
         #AdvSND MuFilter Layout 2 (SQUARED)
         c.AdvMuFilter = AttrDict(z=0*u.cm)
-        c.AdvMuFilter.MuonSysPlaneX     = 70.0 * u.cm
-        c.AdvMuFilter.MuonSysPlaneY     = 70.0 * u.cm
+        c.AdvMuFilter.MuonSysPlaneX     = 250.0 * u.cm
+        c.AdvMuFilter.MuonSysPlaneY     = c.AdvMuFilter.MuonSysPlaneX
         c.AdvMuFilter.CutOffset         = 5.0 * u.cm
-        c.AdvMuFilter.FeX               = 105.0 * u.cm
+        c.AdvMuFilter.FeX               = 375.0 * u.cm
         c.AdvMuFilter.FeY               = c.AdvMuFilter.FeX
         c.AdvMuFilter.FeZ               = 8.0 * u.cm
         c.AdvMuFilter.FeGap             = 2.0 * u.cm
