@@ -20,3 +20,5 @@ link_directories( ${LINK_DIRECTORIES})
 
 add_executable(neutrinoFilterGoldenSample neutrinoFilterGoldenSample.cxx)
 target_link_libraries(neutrinoFilterGoldenSample ${ROOT_LIBRARIES} sndCuts)
+add_executable(muonDISFilterGoldenSample muonDISFilterGoldenSample.cxx)
+target_link_libraries(muonDISFilterGoldenSample ${ROOT_LIBRARIES} sndCuts)
