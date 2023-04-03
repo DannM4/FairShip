@@ -301,6 +301,32 @@ void AdvMuFilter::ConstructGeometry()
     TGeoVolume *volShortCoil = new TGeoVolume("volShortCoil", ShortCoil, Cu);
     volShortCoil->SetLineColor(kOrange+1);
 
+=======
+
+    for(int i = 0; i<fNplanes; i++)
+    {
+        volAdvMuFilter->AddNode(volFeWall, i, new TGeoTranslation(0, 0, i*(fFeZ+fFeGap)));
+        volAdvMuFilter->AddNode(volMagFe, i, new TGeoTranslation(0, 0, i*(fFeZ+fFeGap)));
+        if (i == fNplanes-1) continue;
+        volAdvMuFilter->AddNode(volMuonSysDet, i, new TGeoTranslation(0, 0, (fFeZ+fFeGap)/2.+i*(fFeZ+fFeGap)));
+    }
+    volAdvMuFilter->AddNode(volCoil, 0, new TGeoTranslation(0, fMuonSysPlaneY/2.+fCoilY/2., fCoilZ/2.-fFeZ/2.));
+    volAdvMuFilter->AddNode(volCoil, 1, new TGeoTranslation(0, -fMuonSysPlaneY/2.-fCoilY/2., fCoilZ/2.-fFeZ/2.));
+    
+    // Now adding the second part of the spectrometer, TO DO: think about how to implement it in the Magnet.cxx class with all of the shapes.
+    // for now just add a 1000 offset to identify Magnet hits from MuFilter ones
+    Int_t    fDetIDOffset = 1000;
+    Double_t fNplanes2 = 20;
+    Double_t fMagnetsGap = 90+2.5; // cm
+    Double_t FirstMagZ = fNplanes*(fFeZ+fFeGap);
+    Double_t fShortCoilZ = fNplanes2*fFeZ;
+    Double_t fSpacing = 8.75; // cm
+
+    TGeoBBox *ShortCoil = new TGeoBBox("ShortCoil", fCoilX/2., fCoilY/2., fShortCoilZ/2.);
+    TGeoVolume *volShortCoil = new TGeoVolume("volShortCoil", ShortCoil, Cu);
+    volShortCoil->SetLineColor(kOrange+1);
+
+>>>>>>> f775db09d60029183b035d6a7b6813739366549e
 
     for(int i = 0; i< 20; i++)
     {
