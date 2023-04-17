@@ -62,7 +62,8 @@ int main(int argc, char ** argv) {
   ch->GetEntry(0);
   ch->GetFile()->Get("BranchList")->Write("BranchList", TObject::kSingleKey);
   ch->GetFile()->Get("TimeBasedBranchList")->Write("TimeBasedBranchList", TObject::kSingleKey);
-  ch->GetFile()->Get("FileHeader")->Write();
+  std::cout << "Got BranchList and TimeBasedBranchList" << std::endl;	  
+//ch->GetFile()->Get("FileHeader")->Write();
 
   // Set up all branches to copy to output TTree.
   TTree * outTree = ch->CloneTree(0);
@@ -208,7 +209,7 @@ int main(int argc, char ** argv) {
   for (unsigned long int i_entry = 0; i_entry < n_entries; i_entry++){
     ch->GetEntry(i_entry);
     if (i_entry%10000 == 0) std::cout << "Reading entry " << i_entry << std::endl;
-    
+    //std::cout << "entry n. " << i_entry << std::endl;
     cutFlowHistogram->Fill(0);
 
     // Apply cuts
@@ -251,8 +252,9 @@ int main(int argc, char ** argv) {
 	} else {
 	  
 	  int pdgIn = abs(((ShipMCTrack*)MCTracks->At(0))->GetPdgCode());
-	  int pdgOut = abs(((ShipMCTrack*)MCTracks->At(1))->GetPdgCode());
-	
+	 // int pdgOut = abs(((ShipMCTrack*)MCTracks->At(1))->GetPdgCode());
+	  int pdgOut = 0;
+ 	  pdgIn = 13;
 	  if (pdgIn == (pdgOut+1)){
 	    //CC
 	    if (pdgIn == 12) this_species = 0; // nueCC
@@ -265,7 +267,9 @@ int main(int argc, char ** argv) {
 	    // Other
 	    this_species = 4;
 	  }
+	    this_species = 1;
 	}
+	//std::cout << "Arrived here" << std::endl;
 	cut_by_cut_truth_histos[this_species][seq_cut+1][0]->Fill(((ShipMCTrack*) MCTracks->At(0))->GetEnergy()); // Enu
 	if (this_species < 4) {
 	  cut_by_cut_truth_histos[this_species][seq_cut+1][1]->Fill(((ShipMCTrack*) MCTracks->At(1))->GetEnergy()); // ELep
@@ -278,6 +282,7 @@ int main(int argc, char ** argv) {
     }
 
     // N-1
+    //std::cout << "Now arrived here" << std::endl;
     int current_cut = 0;
     hist_it = n_minus_1_var_histos.begin();
     for (sndAnalysis::baseCut * cut : cutFlow) {

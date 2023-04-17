@@ -122,9 +122,9 @@ run.Init()
 OT = sink.GetOutTree()
 eventTree = ioman.GetInTree()
 eventTree.GetEvent(0)
-if eventTree.EventHeader.ClassName() == 'SNDLHCEventHeader':
-   geo.modules['Scifi'].InitEvent(eventTree.EventHeader)
-   geo.modules['MuFilter'].InitEvent(eventTree.EventHeader)
+#if eventTree.EventHeader.ClassName() == 'SNDLHCEventHeader':
+#   geo.modules['Scifi'].InitEvent(eventTree.EventHeader)
+#   geo.modules['MuFilter'].InitEvent(eventTree.EventHeader)
 # if faireventheader, rely on user to select correct geofile.
 
 if eventTree.GetBranch('Digi_MuFilterHit'):
@@ -295,10 +295,10 @@ def loopEvents(start=0,save=False,goodEvents=False,withTrack=-1,withHoughTrack=-
            mom.Print()
            pos.Print()
     T,dT = 0,0
-    T = event.EventHeader.GetEventTime()
-    runId = eventTree.EventHeader.GetRunId()
-    if Tprev >0: dT = T-Tprev
-    Tprev = T
+    #T = event.EventHeader.GetEventTime()
+    #runId = eventTree.EventHeader.GetRunId()
+    #if Tprev >0: dT = T-Tprev
+    #Tprev = T
     if nAlltracks > 0: print('total number of tracks: ', nAlltracks)
 
     digis = []
@@ -321,10 +321,10 @@ def loopEvents(start=0,save=False,goodEvents=False,withTrack=-1,withHoughTrack=-
           rc=h[collection][c][1].SetName(c)
           rc=h[collection][c][1].Set(0)
 
-    dTs = "%5.2Fns"%(dT/freq*1E9)
+    #dTs = "%5.2Fns"%(dT/freq*1E9)
     # find detector which triggered
-    minT = firstTimeStamp(event)
-    dTs+= "    " + str(minT[1].GetDetectorID())
+    #minT = firstTimeStamp(event)
+    #dTs+= "    " + str(minT[1].GetDetectorID())
     for p in proj:
        rc = h[ 'simpleDisplay'].cd(p)
        h[proj[p]].Draw('b')
@@ -373,7 +373,7 @@ def loopEvents(start=0,save=False,goodEvents=False,withTrack=-1,withHoughTrack=-
                    elif not qdc<0:   
                        h[F][systems[system]][0]+=1
                        if len(h[F][systems[system]]) < 2+side: continue
-                       h[F][systems[system]][2+side]+=qdc
+                       #h[F][systems[system]][2+side]+=qdc
     h['hitCollectionY']['Scifi'][1].SetMarkerColor(ROOT.kBlue+2)
     h['hitCollectionX']['Scifi'][1].SetMarkerColor(ROOT.kBlue+2)
     k = 1
@@ -848,7 +848,7 @@ def drawInfo(pad, k, run, event, timestamp):
       pad.cd(k)
 
    if drawText:
-      runNumber = eventTree.EventHeader.GetRunId()
+      runNumber = 0
       if eventTree.GetBranch('MCTrack'):
         timestamp_start = False
       else:
@@ -867,8 +867,8 @@ def drawInfo(pad, k, run, event, timestamp):
       textInfo.SetTextFont(42)
       textInfo.SetTextSize(.15)
       textInfo.DrawLatex(0, 0.6, 'SND@LHC Experiment, CERN')
-      if hasattr(eventTree.EventHeader,'GetEventNumber'): N = eventTree.EventHeader.GetEventNumber()
-      else: N = event
+      #if hasattr(eventTree.EventHeader,'GetEventNumber'): N = eventTree.EventHeader.GetEventNumber()
+      N = event
       textInfo.DrawLatex(0, 0.4, 'Run / Event: '+str(run)+' / '+str(N))
       if timestamp_start:
            textInfo.DrawLatex(0, 0.2, 'Time (GMT): {}'.format(time_event))

@@ -145,7 +145,7 @@ def direction(event) :
 #    if delta < delta_t_cut :
 #        return False
 #    return True
-cuts.append(["Event direction", direction])
+#cuts.append(["Event direction", direction])
 
 ################################################################################
 # Track intercepts first SciFi plane within 5 cm of the edge
@@ -248,9 +248,9 @@ min_scifi_hits_cut = 35
 def min_scifi_hits(event) :
     n_hits = 0
     for hit in event.Digi_ScifiHits :
-        if hit.isValid() :
+        if hit.isValid() and hit.GetStation!=1:
             n_hits += 1
-            if n_hits > 35 :
+            if n_hits > min_scifi_hits_cut :
                 return True
     return False
 cuts.append(["More than {0} SciFi hits".format(min_scifi_hits_cut), min_scifi_hits])
@@ -325,6 +325,10 @@ branch_list = f.Get("BranchList")
 branch_list_copy = branch_list.Clone()
 branch_list_copy.Write("BranchList", 1)
 
+Eff = {}
+Npassed = {}
+for i in range(len(cuts)):
+    Npassed[i] = 0
 import matplotlib.pyplot as plt
 
 #dca_for_hist = []
@@ -334,6 +338,7 @@ for event in ch :
     for i_cut, cut in enumerate(cuts) :
         if cut[1](event) :
             cut_flow_extended.Fill(cut_flow.GetNbinsX()+i_cut)
+            Npassed[i_cut]+= event.MCTrack[0].GetWeight() 
         else :
             passes_cut = False
             break
@@ -344,6 +349,8 @@ for event in ch :
 
     print("EVENT {0}".format(i_pass))
     i_pass +=1
+
+print(Npassed)
  #   dca_for_hist.append(sum_min_dca(event))
  #   print(dca_for_hist[-1])
 
@@ -351,9 +358,9 @@ for event in ch :
 #plt.hist(dca_for_hist, bins = 100)
 #plt.show()
 
-plt.figure()
-plt.hist(dts, bins = 100)
-plt.show()
+#plt.figure()
+#plt.hist(dts, bins = 100)
+#plt.show()
 
 cut_flow_extended.Write()
 output_file.Write()
