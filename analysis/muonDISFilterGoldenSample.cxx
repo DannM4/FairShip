@@ -111,7 +111,7 @@ int main(int argc, char ** argv) {
     cutFlow.push_back( new sndAnalysis::avgDSFiducialCut(70, 105, 10, 50, ch)); // F. Average DS hit bar number must be within [70, 105] (ver) and [10, 50] (hor)
     cutFlow.push_back( new sndAnalysis::minSciFiConsecutivePlanes(ch)); // G. At least two consecutive SciFi planes hit
     cutFlow.push_back( new sndAnalysis::DSActivityCut(ch)); // H. If there is a downstream hit, require hits in all upstream stations.    
-    if (not isMC) cutFlow.push_back( new sndAnalysis::eventDeltatCut(-1, 100, ch)); // J. Previous event more than 100 clock cycles away. To avoid deadtime issues.
+    //if (not isMC) cutFlow.push_back( new sndAnalysis::eventDeltatCut(-1, 100, ch)); // J. Previous event more than 100 clock cycles away. To avoid deadtime issues.
     //    if (not isMC) cutFlow.push_back( new sndAnalysis::eventDeltatCut(+1, 10, ch)); // K. Next event more than 10 clock cycles away. To avoid event builder issues.
   }
     else {
@@ -208,8 +208,8 @@ int main(int argc, char ** argv) {
         }
       }
       if(!intTarget) continue;
-      float W = 10.256410*((ShipMCTrack*) MCTracks->At(0))->GetWeight(); // Old fluka normalization
-      float wLHC = W/10; // W/nMult
+      float W = 8E8/2E8*((ShipMCTrack*) MCTracks->At(0))->GetWeight();
+      float wLHC = W/10/2; // W/nMult - In the FLUKAFLUKA simulation I am using the FLUKA sample twice
       float sigma = 0;
       float wInter = ((ShipMCTrack*) MCTracks->At(2))->GetWeight();
       if (((ShipMCTrack*) MCTracks->At(0))->GetPdgCode() == 13) sigma = crsec->Eval(((ShipMCTrack*) MCTracks->At(0))->GetEnergy());
@@ -218,12 +218,14 @@ int main(int argc, char ** argv) {
       WEIGHT = wLHC*wInter*wDIS*1E5;
     }
     else if (isMC && isPMU==1) {
-	WEIGHT = 8E8/5E7*((ShipMCTrack*) MCTracks->At(0))->GetWeight()*1E5;
+	WEIGHT = 8E8/2E8*((ShipMCTrack*) MCTracks->At(0))->GetWeight()*1E5;
     	bool DISinpassing = false;
 	int ntracks = MCTracks->GetEntries();
 	for (int ntrack = 0; ntrack < ntracks; ntrack++){
-		if (((ShipMCTrack*) MCTracks->At(ntrack))->GetProcID() == 23) DISinpassing = true;
-		break;
+		Double_t ProcID = ((ShipMCTrack*) MCTracks->At(ntrack))->GetProcID();
+		if ( ProcID == 23 || ProcID == 13 || ProcID == 25 || ProcID == 24 || ProcID == 26 || ProcID == 27 || ProcID == 46){ 
+		DISinpassing = true;
+		break;}
 	}
 	if (DISinpassing) continue; //exclude DIS interactions in passing muon simulations	
     }
