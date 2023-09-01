@@ -69,6 +69,7 @@ args = parser.parse_args()
 
 if args.tracking and args.inputFile and args.geoFile:
     runTracking()
+    exit()
     
 snd_geo = SndlhcGeo.GeoInterface(args.geoFile)
 scifiDet = ROOT.gROOT.GetListOfGlobals().FindObject('Scifi')
@@ -467,10 +468,11 @@ for this_cut_name, cut_function, short_name, nbins, range_start, range_end in cu
 i_pass = 0
 passes_cut = [False]*len(cuts)
 cut_var = [0.]*len(cuts)
-for event in ch:
+for i_event, event in enumerate(ch):
     n_cuts_passed = 0
     accept_event = True
     WEIGHT=1.
+    if i_event%10000 == 0: print("Sanity check, current event ", i_event)
     if isMC:
         if args.pmu: WEIGHT = 8E8/2E8*event.MCTrack[0].GetWeight()*1E5
         else:
@@ -491,6 +493,7 @@ for event in ch:
             cut_flow_extended2.Fill(cut_flow.GetNbinsX()+i_cut, WEIGHT)
         else :
             accept_event = False
+    
     if accept_event :
         output_tree.Fill()
     
@@ -516,7 +519,7 @@ for event in ch:
             n_minus_1_var_histos[i_cut].Fill(cut_var[i_cut])
     
     if (n_cuts_passed == len(passes_cut)) :
-        #print("EVENT {0}".format(i_pass))
+        if not i_pass %10000: print("EVENT {0}".format(i_pass))
         i_pass +=1
 
 cut_flow_extended.Write()
