@@ -1,10 +1,11 @@
-import ROOT
-import numpy as np
 import os
-import SndlhcGeo
-
 # Code snippet from Simona. This should go somewhere where it can be used by several different pieces of code (monitoring, analysis, etc)
 import pickle
+
+import numpy as np
+import ROOT
+import SndlhcGeo
+
 p = open("/eos/experiment/sndlhc/convertedData/commissioning/TI18/FSdict.pkl",'rb')
 FSdict = pickle.load(p)
 
@@ -55,6 +56,7 @@ def bunchXtype(eventTime, runN):
 # End snippet
 
 import argparse
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-f", dest = "inputFile", required = False)
@@ -190,6 +192,25 @@ def US_shower(event):
     if nus_statID[1] > 2. and nus_statID[2] > 2 and nus_statID[3] > 2: ret = True
     return ret, nus_statID[1]
 cuts.append(["US1-2-3 hits > 2", US_shower, "ThreeUS_2", 11, -0.5, 10.5])
+################################################################################
+# Kill EM showers in upstream SciFi
+################################################################################
+def NoEMShower(event):
+    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
+    for aHit in event.Digi_ScifiHits:
+        if not aHit.isValid(): continue
+        station = aHit.GetStation()
+        nsf_statID[station]+=1
+    FirstSFHit = -1
+    deltahits = {2:0, 3:0, 4:0, 5:0}
+    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
+    for detID in range(1, 6):
+        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
+            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
+    ret = False
+    if all(value for key, value in deltahits.items() if value > -0.05 and key < 4): ret = True
+    return ret, deltahits[2]
+cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
 ################################################################################
 # END CUT DEFINITONS
 ################################################################################
