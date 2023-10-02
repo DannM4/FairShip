@@ -346,7 +346,7 @@ def min_scifi_hits(event) :
             if n_hits > 35 :
                 ret = True
     return ret, n_hits
-cuts.append(["More than {0} SciFi hits".format(min_scifi_hits_cut), min_scifi_hits, "scifi_nhits", 100, 0, 3000])
+#cuts.append(["More than {0} SciFi hits".format(min_scifi_hits_cut), min_scifi_hits, "scifi_nhits", 100, 0, 3000])
 
 ################################################################################
 # Min QDC

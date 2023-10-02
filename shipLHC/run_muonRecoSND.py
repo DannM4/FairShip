@@ -117,6 +117,7 @@ muon_reco_task.SetScaleFactor(options.scaleFactor)
 
 # Set number of events to process
 nEvents = min( options.nEvents, source.GetEntries())
+#nEvents = source.GetEntries()
 
 run.Run(options.firstEvent, options.firstEvent + nEvents)
 w.Stop()

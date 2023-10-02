@@ -4,10 +4,38 @@ import pickle
 
 import numpy as np
 import ROOT
+import rootUtils as ut
 import SndlhcGeo
 
 p = open("/eos/experiment/sndlhc/convertedData/commissioning/TI18/FSdict.pkl",'rb')
 FSdict = pickle.load(p)
+
+def CorrectScifi(event):
+  nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
+  nsf_statID_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
+  time_plane = {1:0, 2:0, 3:0, 4:0, 5:0}
+  Nsf = 0
+  Nsf_corr = 0
+  hist = {}
+  for st in range(1, 6):
+    ut.bookHist(hist, 'ScifiHitTime_'+str(st), "Scifihittime corrected station "+str(st), 20, 0, 50)
+  for aHit in event.Digi_ScifiHits:
+    if not aHit.isValid(): continue
+    Nsf+=1
+    station = aHit.GetStation()
+    nsf_statID[station]+=1
+    time_plane[station] = aHit.GetTime()*TDC2ns
+    time_plane[station] = scifiDet.GetCorrectedTime(aHit.GetDetectorID(), time_plane[station], 0)
+    hist['ScifiHitTime_'+str(station)].Fill(time_plane[station])
+  for station, sfhit in nsf_statID.items():
+    if sfhit > 40:
+      Nsf_corr+= hist['ScifiHitTime_'+str(station)].GetMaximum()
+      nsf_statID_corr[station] = hist['ScifiHitTime_'+str(station)].GetMaximum()
+    else:
+      Nsf_corr+=sfhit
+      nsf_statID_corr[station] = sfhit
+  del hist
+  return Nsf_corr, Nsf, nsf_statID_corr, nsf_statID
 
 def GetVetoBar(detID):
     plane = int((detID/1000)%10)
@@ -97,7 +125,22 @@ ch.AddFriend(ch_tracks)
 
 # Set up cuts
 cuts = []
-
+################################################################################
+# At least 35 SciFi hits
+################################################################################
+min_scifi_hits_cut = 35
+def min_scifi_hits(event) :
+    n_hits = 0
+    n_hits_corr = 0
+    ret = False
+    n_hits_corr, n_hits, nsf_statID_corr, nsf_statID = CorrectScifi(event)
+    if isMC:
+        if n_hits > min_scifi_hits_cut: ret = True
+        return ret, n_hits
+    else:
+        if n_hits_corr > min_scifi_hits_cut: ret = True
+        return ret, n_hits_corr
+cuts.append(["More than {0} SciFi hits (CORRECTED)".format(min_scifi_hits_cut), min_scifi_hits, "scifi_nhits", 100, 0, 3000])
 ################################################################################
 # Top and bottom Veto bars are not fired
 ################################################################################
@@ -163,11 +206,12 @@ cuts.append(["Number of US hits is > {0}".format(min_US_hits_cut), min_US_hits, 
 # Shower forming
 ################################################################################
 def FollowShower(event):
+    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
     nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
-    for aHit in event.Digi_ScifiHits:
-        if not aHit.isValid(): continue
-        station = aHit.GetStation()
-        nsf_statID[station]+=1
+    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
+    if isMC: nsf_statID=nsf_stat
+    else: nsf_statID=nsf_stat_corr
     FirstSFHit = -1
     deltahits = {2:0, 3:0, 4:0, 5:0}
     FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
@@ -177,7 +221,7 @@ def FollowShower(event):
     ret = False
     if deltahits[4] > 1. and deltahits[5] > 0: ret = True
     return ret, deltahits[4]
-cuts.append(["Delta4>1 and Delta5>0", FollowShower, "FollowShower", 180, -3, 15])
+#cuts.append(["Delta4>1 and Delta5>0", FollowShower, "FollowShower", 180, -3, 15])
 ################################################################################
 # Shower in US
 ################################################################################
@@ -196,11 +240,12 @@ cuts.append(["US1-2-3 hits > 2", US_shower, "ThreeUS_2", 11, -0.5, 10.5])
 # Kill EM showers in upstream SciFi
 ################################################################################
 def NoEMShower(event):
+    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
     nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
-    for aHit in event.Digi_ScifiHits:
-        if not aHit.isValid(): continue
-        station = aHit.GetStation()
-        nsf_statID[station]+=1
+    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
+    if isMC: nsf_statID=nsf_stat
+    else: nsf_statID=nsf_stat_corr
     FirstSFHit = -1
     deltahits = {2:0, 3:0, 4:0, 5:0}
     FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
@@ -208,9 +253,11 @@ def NoEMShower(event):
         if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
             deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
     ret = False
-    if all(value for key, value in deltahits.items() if value > -0.05 and key < 4): ret = True
+    #delta2132 = [value for key, value in deltahits.items() if key < 4]
+    #if all(value > -0.05 for value in delta2132): ret = True
+    if all(value for key, value in deltahits.items() if value > -0.05 and key<4): ret = True
     return ret, deltahits[2]
-cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
+#cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
 ################################################################################
 # END CUT DEFINITONS
 ################################################################################
