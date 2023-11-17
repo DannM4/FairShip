@@ -115,6 +115,12 @@ if not os.path.exists(options.outputDir):
   os.makedirs(options.outputDir)
 if options.boostFactor>1:
    tag+='_boost'+str(options.boostFactor)
+#Custom made for DIS (dcentann)
+if simEngine == "muonDIS":
+   inSplitted = options.inputFile.split('/')
+   fname = inSplitted[len(inSplitted)-1].split('.')
+   tag = simEngine+"-"+mcEngine+"-"+fname[0]
+#####
 outFile = "%s/sndLHC.%s.root" % (options.outputDir, tag)
 
 # rm older files !!! 
@@ -162,12 +168,15 @@ if simEngine == "muonDIS":
    ut.checkFileExists(inputFile)
    primGen.SetTarget(0., 0.) 
    DISgen = ROOT.MuDISGenerator()
-   mu_start, mu_end = (-3.7-2.0)*u.m , -0.3*u.m # tunnel wall -30cm in front of SND
+   mu_start, mu_end = 2.85*u.m , 3.55*u.m  #ints simulated in target
    DISgen.SetPositions(0, mu_start, mu_end)
    DISgen.Init(inputFile,options.firstEvent) 
    primGen.AddGenerator(DISgen)
    options.nEvents = min(options.nEvents,DISgen.GetNevents())
-   inactivateMuonProcesses = True # avoid unwanted hadronic events of "incoming" muon flying backward
+   lastEvts = DISgen.GetNevents()-options.firstEvent
+   if options.nEvents >= lastEvts:
+      options.nEvents = lastEvts
+   inactivateMuonProcesses = False # avoid unwanted hadronic events of "incoming" muon flying backward
    print('MuDIS position info input=',mu_start, mu_end)
    print('Generate ',options.nEvents,' with DIS input', ' first event',options.firstEvent)
 
