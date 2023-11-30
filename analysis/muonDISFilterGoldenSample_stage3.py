@@ -10,6 +10,50 @@ import SndlhcGeo
 p = open("/eos/experiment/sndlhc/convertedData/commissioning/TI18/FSdict.pkl",'rb')
 FSdict = pickle.load(p)
 
+def scifiCluster(DigiScifiBranch, scifiDet):
+    clusters = []
+    hitDict = {}
+    clusScifi   = ROOT.TObjArray(100)
+    for k in range(DigiScifiBranch.GetEntries()):
+        d = DigiScifiBranch[k]
+        if not d.isValid(): continue 
+        hitDict[d.GetDetectorID()] = k
+    hitList = list(hitDict.keys())
+    if len(hitList)>0:
+            hitList.sort()
+            tmp = [ hitList[0] ]
+            cprev = hitList[0]
+            ncl = 0
+            last = len(hitList)-1
+            hitvector = ROOT.std.vector("sndScifiHit*")()
+            for i in range(len(hitList)):
+                if i==0 and len(hitList)>1: continue
+                c=hitList[i]
+                neighbour = False
+                if (c-cprev)==1:    # does not account for neighbours across sipms
+                    neighbour = True
+                    tmp.append(c)
+                if not neighbour  or c==hitList[last]:
+                    first = tmp[0]
+                    N = len(tmp)
+                    hitvector.clear()
+                    for aHit in tmp: hitvector.push_back( DigiScifiBranch[hitDict[aHit]])
+                    aCluster = ROOT.sndCluster(first,N,hitvector,scifiDet,False)
+                    clusters.append(aCluster)
+                    if c!=hitList[last]:
+                            ncl+=1
+                            tmp = [c]
+                    elif not neighbour :   # save last channel
+                        hitvector.clear()
+                        hitvector.push_back( DigiScifiBranch[hitDict[c]])
+                        aCluster = ROOT.sndCluster(c,1,hitvector,scifiDet,False)
+                        clusters.append(aCluster)
+                cprev = c
+    clusScifi.Delete()            
+    for c in clusters:  
+        clusScifi.Add(c)
+    return clusScifi
+
 def CorrectScifi(event):
   nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
   nsf_statID_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
@@ -103,7 +147,7 @@ muFilterDet = ROOT.gROOT.GetListOfGlobals().FindObject('MuFilter')
 # Set up TTrees
 isMC = False
 treeName = "rawConv"
-
+TDC2ns = 1E9/160.316E6
 ch = ROOT.TChain(treeName)
 ch.Add(args.inputFile)
 
@@ -160,7 +204,62 @@ def VetoBarsCut(event):
                 value = 0
     
     return ret, value
-cuts.append(["Top and Bottom Veto bars fired", VetoBarsCut, "VetoBars", 2, -0.5, 1.5])
+cuts.append(["Top and Bottom Veto bars not fired", VetoBarsCut, "VetoBars", 2, -0.5, 1.5])
+################################################################################
+# Single Veto bar per plane fired
+################################################################################
+def SingleVetoBarsCut(event):
+    ## add veto bars cut
+    VetoBarFired    = {0: list(), 1: list()}
+    for aHit in event.Digi_MuFilterHits:
+        if aHit.GetSystem()!=1: continue
+        plane, bar = GetVetoBar(aHit.GetDetectorID())
+        VetoBarFired[plane].append(bar)
+    ret = False
+    value = 1
+    if len(VetoBarFired[0]) == len(VetoBarFired[1]) == 1:
+        if VetoBarFired[1][0] >= VetoBarFired[0][0] -1 and VetoBarFired[1][0] <= VetoBarFired[0][0]+1:
+            value = VetoBarFired[0][0]
+            ret = True
+    else:
+        ret = False
+    return ret, value
+cuts.append(["Ask for single Veto Bars", SingleVetoBarsCut, "SingleVetoBars", 9, -0.5, 8.5])
+################################################################################
+# Single Cluster in Scifi 1 and 2
+################################################################################
+uptoiplane = 2
+def SingleScifiCluster(event):
+    NsfClPl_H       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    NsfClPl_V       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    Nsfcl= 0
+    if not isMC:
+        DATA_scifiCluster = scifiCluster(event.Digi_ScifiHits, scifiDet)
+        for aCl in DATA_scifiCluster:
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
+    else:
+        for aCl in event.Cluster_Scifi: # MonteCarlo clustering
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
+    ret = True
+    value = Nsfcl
+    for key in NsfClPl_H.keys():
+        if key > uptoiplane: continue
+        if NsfClPl_H[key] > 1 or NsfClPl_V[key] > 1:
+            ret = False
+    return ret, value
+cuts.append(["Single H/V Cluster in first {0} Scifi planes".format(uptoiplane), SingleScifiCluster, "SingleSFClusters", 20, 0, 20])
 ################################################################################
 # Ask for shower developing
 ################################################################################
@@ -190,7 +289,7 @@ cuts.append(["Ask for HAD shower develop", MaxDelta, "HShowerDev", 5, 0.5, 5.5,]
 ################################################################################
 # Ask for at least 6 US hits
 ################################################################################
-min_US_hits_cut = 7
+min_US_hits_cut = 8
 def min_US_hits(event):
     US_hits = 0.
     ret = True
@@ -201,7 +300,7 @@ def min_US_hits(event):
     if US_hits < min_US_hits_cut :
         ret =  False
     return ret, US_hits
-cuts.append(["Number of US hits is > {0}".format(min_US_hits_cut), min_US_hits, "US_hits", 51, -0.5, 50.5])
+#cuts.append(["Number of US hits is > {0}".format(min_US_hits_cut), min_US_hits, "US_hits", 51, -0.5, 50.5])
 ################################################################################
 # Shower forming
 ################################################################################
@@ -225,6 +324,8 @@ def FollowShower(event):
 ################################################################################
 # Shower in US
 ################################################################################
+min_us_plane = 1
+if isMC: min_us_plane = 2
 def US_shower(event):
     nus_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
     ret = False
@@ -233,9 +334,9 @@ def US_shower(event):
         if not hit.isValid() : continue
         MuFistation = hit.GetPlane()
         nus_statID[MuFistation+1]+=1
-    if nus_statID[1] > 2. and nus_statID[2] > 2 and nus_statID[3] > 2: ret = True
+    if nus_statID[1] > min_us_plane and nus_statID[2] > min_us_plane and nus_statID[3] > min_us_plane: ret = True
     return ret, nus_statID[1]
-cuts.append(["US1-2-3 hits > 2", US_shower, "ThreeUS_2", 11, -0.5, 10.5])
+#cuts.append(["US1-2-3 hits > {0}".format(min_us_plane), US_shower, "ThreeUS_2", 11, -0.5, 10.5])
 ################################################################################
 # Kill EM showers in upstream SciFi
 ################################################################################
@@ -253,9 +354,9 @@ def NoEMShower(event):
         if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
             deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
     ret = False
-    #delta2132 = [value for key, value in deltahits.items() if key < 4]
-    #if all(value > -0.05 for value in delta2132): ret = True
-    if all(value for key, value in deltahits.items() if value > -0.05 and key<4): ret = True
+    delta2132 = [value for key, value in deltahits.items() if key < 4]
+    if all(value > -0.05 for value in delta2132): ret = True
+    #if all(value for key, value in deltahits.items() if value > -0.05 and key<4): ret = True
     return ret, deltahits[2]
 #cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
 ################################################################################

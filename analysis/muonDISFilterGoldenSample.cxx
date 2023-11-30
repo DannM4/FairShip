@@ -22,11 +22,21 @@
 #include "sndEventDeltat.h"
 #include "sndAvgSciFiFiducialCut.h"
 #include "sndAvgDSFiducialCut.h"
+#include "Scifi.h"
+#include "TPython.h"
+#include "TROOT.h"
 /* MuonDIS golden sample filter */
 /* Usage: 
  * if you're working with muonDIS simulations the arguments are: 1.inputfilte 2.outputfile 3.cutset(0) 4.geometryfile 5.isPMU(0)
  * if you're working with passingMu simulations one can try with: 1.inputfilte 2.outputfile 3.cutset(0) 4.geometryfile(0) 5.isPMU(1)  
  * */
+
+bool importGeo(){
+	TPython::Exec("import SndlhcGeo");
+  	TPython::Exec("SndlhcGeo.GeoInterface('/eos/experiment/sndlhc/convertedData/physics/2023/geofile_sndlhc_TI18_V3_2023.root')");
+	return true;
+}
+
 
 enum Cutset { stage1cuts } ; // one cutset for now
 
@@ -100,14 +110,19 @@ int main(int argc, char ** argv) {
 	crsec2 = (TGraph*) file2->Get("g_-13");
 	outFile->cd();
   }
-  
-
+ Scifi *scifiDet;
+ if (!isMC){
+	importGeo();
+	scifiDet = (Scifi*) gROOT->GetListOfGlobals()->FindObject("Scifi");
+	outFile->cd();
+  }
   if (selected_cutset == stage1cuts){ // Stage 1 cuts
     //    cutFlow.push_back( new sndAnalysis::minSciFiHits(1, ch)); // A. Events with SciFi activity
     cutFlow.push_back( new sndAnalysis::vetoCut(ch)); // B. No veto hits
     cutFlow.push_back( new sndAnalysis::sciFiStationCut(0., std::vector<int>(1, 1), ch)); // C. No hits in first SciFi plane
     //cutFlow.push_back( new sndAnalysis::sciFiStationCut(0.05, std::vector<int>(1, 5), ch)); // D. Vertex not in 5th wall
-    cutFlow.push_back( new sndAnalysis::avgSciFiFiducialCut(200, 1200, 300, 128*12-200, ch)); // E. Average SciFi hit channel number must be within [200, 1200] (ver) and [300, max-200] (hor)
+    if (!isMC) cutFlow.push_back( new sndAnalysis::avgSciFiFiducialCut(200, 1200, 300, 128*12-200, ch, false, isMC, scifiDet)); // E. Average SciFi hit channel number must be within [200, 1200] (ver) and [300, max-200] (hor)
+    else cutFlow.push_back( new sndAnalysis::avgSciFiFiducialCut(200, 1200, 300, 128*12-200, ch, false, isMC));
     cutFlow.push_back( new sndAnalysis::avgDSFiducialCut(70, 105, 10, 50, ch)); // F. Average DS hit bar number must be within [70, 105] (ver) and [10, 50] (hor)
     cutFlow.push_back( new sndAnalysis::minSciFiConsecutivePlanes(ch)); // G. At least two consecutive SciFi planes hit
     cutFlow.push_back( new sndAnalysis::DSActivityCut(ch)); // H. If there is a downstream hit, require hits in all upstream stations.    

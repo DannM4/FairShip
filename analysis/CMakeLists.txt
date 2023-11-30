@@ -1,10 +1,11 @@
 set(INCLUDE_DIRECTORIES
-${BASE_INCLUDE_DIRECTORIES}
+${SYSTEM_INCLUDE_DIRECTORIES}
 ${VMC_INCLUDE_DIRS}
 ${CMAKE_SOURCE_DIR}/shipdata
 ${CMAKE_SOURCE_DIR}/shipLHC
 ${CMAKE_SOURCE_DIR}/analysis/cuts
 ${CMAKE_SOURCE_DIR}/analysis/tools
+${FMT_INCLUDE_DIR}
 )
 
 include_directories( ${INCLUDE_DIRECTORIES} )
@@ -21,4 +22,4 @@ link_directories( ${LINK_DIRECTORIES})
 add_executable(neutrinoFilterGoldenSample neutrinoFilterGoldenSample.cxx)
 target_link_libraries(neutrinoFilterGoldenSample ${ROOT_LIBRARIES} sndCuts)
 add_executable(muonDISFilterGoldenSample muonDISFilterGoldenSample.cxx)
-target_link_libraries(muonDISFilterGoldenSample ${ROOT_LIBRARIES} sndCuts)
+target_link_libraries(muonDISFilterGoldenSample ${ROOT_LIBRARIES} -lROOTTPython sndCuts)
