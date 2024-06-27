@@ -36,6 +36,7 @@ parser.add_argument("-g", "--geoFile", dest="geoFile", help="geofile", default=o
 parser.add_argument("-P", "--partition", dest="partition", help="partition of data", type=int,required=False,default=-1)
 parser.add_argument("--server", dest="server", help="xrootd server",default=os.environ["EOSSHIP"])
 parser.add_argument("-X", dest="extraInfo", help="print extra event info",default=True)
+parser.add_argument("--tf", dest="trackFile", help="file with FEDRA tracks",default=None,required=False)
 
 parser.add_argument("-par", "--parFile", dest="parFile", help="parameter file", default=os.environ['SNDSW_ROOT']+"/python/TrackingParams.xml")
 parser.add_argument("-hf", "--HoughSpaceFormat", dest="HspaceFormat", help="Hough space representation. Should match the 'Hough_space_format' name in parFile, use quotes", default='linearSlopeIntercept')
@@ -298,7 +299,10 @@ def loopEvents(
               Setup='',
               verbose=0,
               auto=False,
-              hitColour=None
+              hitColour=None, 
+              trkevent=None,
+              trkcut=None,
+              brID=None
               ):
  if 'simpleDisplay' not in h: ut.bookCanvas(h,key='simpleDisplay',title='simple event display',nx=1200,ny=1600,cx=1,cy=2)
  h['simpleDisplay'].cd(1)
@@ -565,6 +569,12 @@ def loopEvents(
 
     if verbose>0: dumpChannels()
     userProcessing(event)
+    if options.trackFile:
+      if brID == None: raise Exception('Please provide BrickID for the selected track(s)!')
+      if trkevent is not None:
+          drawEmuTrack(tcut="trid=={}".format(trkevent), brickID=brID, trackfile=options.trackFile)
+      if trkcut is not None:
+          drawEmuTrack(tcut=trkcut, brickID=brID, trackfile=options.trackFile)
 
     if save: h['simpleDisplay'].Print('{:0>2d}-event_{:04d}'.format(runId,N)+'.png')
     if auto:
@@ -1128,7 +1138,7 @@ def drawInfo(pad, k, run, event, timestamp,moreEventInfo=[]):
 gemuzx = ROOT.TGraphErrors()
 gemuzy = ROOT.TGraphErrors()
 
-def drawEmuTrack(itrack, brickID, trackfile):
+def drawEmuTrack(tcut, brickID, trackfile):
    import fedrarootlogon
    import numpy as np
    import Fedra2sndsw as EmuConv
@@ -1137,17 +1147,24 @@ def drawEmuTrack(itrack, brickID, trackfile):
    ali = ROOT.EdbPVRec()
    scancond = ROOT.EdbScanCond()
    ali.SetScanCond(scancond)
+   selected_tracks = []
+   ntrks = dproc.ReadTracksTree(ali,trackfile,tcut)
+   if ntrks == 1: #in this case, the list of tracks is only one track
+      track = ali.eTracks[0]
+      #read track, applying conversion
+      globaltrackarr = EmuConv.converttrack(track,brickID)
+      selected_tracks.append(globaltrackarr)
+   elif ntrks > 1:
+       for track in ali.eTracks:
+           globaltrackarr = EmuConv.converttrack(track, brickID)
+           selected_tracks.append(globaltrackarr)
+   else: raise Warning('No tracks selected with the current cuts!')
+   for glbtarr in selected_tracks:
+      for x,y,z,tx,ty,tz in glbtarr:
+         gemuzx.AddPoint(z,x)
+         gemuzy.AddPoint(z,y)
 
-   dproc.ReadTracksTree(ali,trackfile,"trid=={}".format(itrack))
-   #in this case, the list of tracks is only one track
-   track = ali.eTracks[0]
-   #read track, applying conversion
-   globaltrackarr = EmuConv.converttrack(track,brickID)
-   for x,y,z,tx,ty,tz in globaltrackarr:
-      gemuzx.AddPoint(z,x)
-      gemuzy.AddPoint(z,y)
-
-   gemuzx.Print()
+   #gemuzx.Print()
    h['simpleDisplay'].cd(1)
    gemuzx.SetMarkerStyle(20)
    gemuzx.SetMarkerSize(0.1)
@@ -1156,7 +1173,7 @@ def drawEmuTrack(itrack, brickID, trackfile):
    gemuzy.SetMarkerStyle(20)
    gemuzy.SetMarkerSize(0.1)
    gemuzy.Draw("sameP")
-   gemuzy.Print()
+   #gemuzy.Print()
 
    h['simpleDisplay'].Update()
    h['simpleDisplay'].Draw()
