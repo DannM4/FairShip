@@ -44,7 +44,7 @@ int main(int argc, char ** argv) {
 
   std::cout << "Starting muon DIS filter" << std::endl;
   
-  if (argc < 4 || argc > 6) {
+  if (argc < 4 || argc > 7) {
     std::cout << "Three arguments required: input file name (or reg exp), output file name, cut set (0: stage 1 selection) (geofile as 4th arg if MC)" << std::endl;
     exit(-1);
   }
@@ -91,14 +91,15 @@ int main(int argc, char ** argv) {
   
   int selected_cutset = std::atoi(argv[3]);
   int isPMU = std::atoi(argv[5]);
+  int nPMUfiles = std::atoi(argv[6]);
   TGraph *crsec = NULL;
   TGraph *crsec2 = NULL;
   TFile  *file2 = NULL;
-  if (isPMU) std::cout << "Passing muons simulation obtained" << std::endl;
+  if (isPMU) {std::cout << "Passing muons simulation obtained" << std::endl; std::cout << "Read " << nPMUfiles << " PMU files" << std::endl;}
 
-  if (isMC && argc != 6)
+  if (isMC && argc != 7)
   {
-    std::cout << "Five arguments are needed for MC" << std::endl;
+    std::cout << "Six arguments are needed for MC" << std::endl;
     exit(-1);
   }
   else if (isMC && !isPMU ) {
@@ -203,7 +204,7 @@ int main(int argc, char ** argv) {
   const char *volName = NULL;
 
   for (unsigned long int i_entry = 0; i_entry < n_entries; i_entry++){
-    if ((i_entry == 316629 || i_entry == n_entries-1)  && isPMU == 1) continue; // exclude problemati events from the PassingMuons simulation
+    //if ((i_entry == 316629 || i_entry == n_entries-1)  && isPMU == 1) continue; // exclude problemati events from the PassingMuons simulation
     ch->GetEntry(i_entry);
     float WEIGHT = 1.;
     if (i_entry%10000 == 0) std::cout << "Reading entry " << i_entry << std::endl;
@@ -233,7 +234,7 @@ int main(int argc, char ** argv) {
       WEIGHT = wLHC*wInter*wDIS*1E5;
     }
     else if (isMC && isPMU==1) {
-	WEIGHT = 8E8/2E8*((ShipMCTrack*) MCTracks->At(0))->GetWeight()*1E5;
+	WEIGHT = 8E8/2E8*((ShipMCTrack*) MCTracks->At(0))->GetWeight()*1E5/nPMUfiles;
     	bool DISinpassing = false;
 	int ntracks = MCTracks->GetEntries();
 	for (int ntrack = 0; ntrack < ntracks; ntrack++){
@@ -315,11 +316,12 @@ int main(int argc, char ** argv) {
       current_cut++;
     }
   }
+  //std::cout << "Arrivato qui" << std::endl;
   delete file2;
   delete crsec;
   delete crsec2; 
   
   outFile->Write();
-
+  //std::cout << "Non sto scrivendo il file" << std::endl;
   return 0;
 }

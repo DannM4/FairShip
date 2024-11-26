@@ -10,6 +10,79 @@ import SndlhcGeo
 p = open("/eos/experiment/sndlhc/convertedData/commissioning/TI18/FSdict.pkl",'rb')
 FSdict = pickle.load(p)
 
+def GetAvgScifiPos(DigiScifiHits):
+    n_sf_hits_x = [0]*5
+    n_sf_hits_y = [0]*5
+    avg_sf_x = [0.]*5
+    avg_sf_y = [0.]*5
+    a, b = ROOT.TVector3(), ROOT.TVector3()
+    for hit in DigiScifiHits :
+        if not hit.isValid() :
+            continue
+        plane = hit.GetStation() - 1
+        if hit.isVertical() :
+            n_sf_hits_x[plane] += 1
+            avg_sf_x[plane] += (a.X() + b.X())/2.
+        else :
+            n_sf_hits_y[plane] += 1
+            avg_sf_y[plane] += (a.Y() + b.Y())/2.
+    for i_plane in range(5) :
+        if n_sf_hits_x[i_plane] :
+            avg_sf_x[i_plane] /= n_sf_hits_x[i_plane]
+        if n_sf_hits_y[i_plane] :
+            avg_sf_y[i_plane] /= n_sf_hits_y[i_plane]
+    return avg_sf_x, avg_sf_y
+
+def getAvgScifiPos(event, scifiDet):
+    n_sf_hits_x ={1:0, 2:0, 3:0, 4:0, 5:0}
+    n_sf_hits_y ={1:0, 2:0, 3:0, 4:0, 5:0}
+    avg_sf_x = {1:0, 2:0, 3:0, 4:0, 5:0}
+    avg_sf_y = {1:0, 2:0, 3:0, 4:0, 5:0}
+    a, b = ROOT.TVector3(), ROOT.TVector3()
+    for aHit in event.Digi_ScifiHits:
+        if not aHit.isValid(): continue
+        plane = aHit.GetStation()
+        detID = aHit.GetDetectorID()
+        scifiDet.GetSiPMPosition(detID, a, b)
+        if aHit.isVertical():
+            n_sf_hits_x[plane]+=1
+            avg_sf_x[plane]+= (a.X() + b.X())/2.
+        else:
+            n_sf_hits_y[plane]+=1
+            avg_sf_y[plane]+= (a.Y() + b.Y())/2.
+    for iplane in range(1, 5):
+        if n_sf_hits_x[iplane]:
+            avg_sf_x[plane]/=n_sf_hits_x[iplane]
+        if n_sf_hits_y[iplane]:
+            avg_sf_y[iplane]/=n_sf_hits_y[iplane]
+    return avg_sf_x, avg_sf_y
+
+def getTimeCorrectedRange(event, scifiDet):
+    import rootUtils as ut
+    rangePerStation = {1:[], 2:[], 3:[], 4:0, 5:[]}
+    avg_sf_x, avg_sf_y = getAvgScifiPos(event, scifiDet)
+    hist = {}
+    for iplane in range(1, 6):
+        a, b = ROOT.TVector3(), ROOT.TVector3()
+        ut.bookHist(hist, 'ScifiHitTime_'+str(iplane), "Scifihittime corrected station "+str(iplane), 20, 0, 50)
+        for aHit in event.Digi_ScifiHits:
+            if not aHit.isValid(): continue
+            if not aHit.GetStation()==iplane: continue
+            scifiDet.GetSiPMPosition(aHit.GetDetectorID(), a, b)
+            L = None
+            if aHit.isVertical(): L = b.Y()-avg_sf_y[iplane]
+            else: L = avg_sf_x[iplane]-a.X()
+            hit_time = scifiDet.GetCorrectedTime(aHit.GetDetectorID(), aHit.GetTime()*TDC2ns, L)
+            hist['ScifiHitTime_'+str(iplane)].Fill(hit_time)
+        ibin = -1
+        ibin = hist['ScifiHitTime_'+str(iplane)].GetMaximumBin()
+        rangePerStation[iplane] = [hist['ScifiHitTime_'+str(iplane)].GetBinLowEdge(ibin),  hist['ScifiHitTime_'+str(iplane)].GetBinLowEdge(ibin+3)]
+    return rangePerStation
+
+def isInTimeRange(hit_time, time_low, time_up):
+    if hit_time > time_low and hit_time <= time_up: return True
+    else: return False
+
 def scifiCluster(DigiScifiBranch, scifiDet):
     clusters = []
     hitDict = {}
@@ -61,25 +134,46 @@ def CorrectScifi(event):
   Nsf = 0
   Nsf_corr = 0
   hist = {}
+  a, b = ROOT.TVector3(), ROOT.TVector3()
+  avg_sf_x, avg_sf_y = GetAvgScifiPos(event.Digi_ScifiHits)
   for st in range(1, 6):
     ut.bookHist(hist, 'ScifiHitTime_'+str(st), "Scifihittime corrected station "+str(st), 20, 0, 50)
   for aHit in event.Digi_ScifiHits:
     if not aHit.isValid(): continue
-    Nsf+=1
+    scifiDet.GetSiPMPosition(aHit.GetDetectorID(), a, b)
     station = aHit.GetStation()
+    if aHit.isVertical() :
+        L = b.Y() - avg_sf_y[station-1]      
+    else :
+        L = avg_sf_x[station-1] - a.X()
+    Nsf+=1
     nsf_statID[station]+=1
     time_plane[station] = aHit.GetTime()*TDC2ns
-    time_plane[station] = scifiDet.GetCorrectedTime(aHit.GetDetectorID(), time_plane[station], 0)
+    time_plane[station] = scifiDet.GetCorrectedTime(aHit.GetDetectorID(), time_plane[station], L)
     hist['ScifiHitTime_'+str(station)].Fill(time_plane[station])
   for station, sfhit in nsf_statID.items():
+    ibin = hist['ScifiHitTime_'+str(station)].GetMaximumBin()
     if sfhit > 40:
-      Nsf_corr+= hist['ScifiHitTime_'+str(station)].GetMaximum()
-      nsf_statID_corr[station] = hist['ScifiHitTime_'+str(station)].GetMaximum()
+      Nsf_corr+= hist['ScifiHitTime_'+str(station)].Integral(ibin, ibin+2)
+      nsf_statID_corr[station] = hist['ScifiHitTime_'+str(station)].Integral(ibin, ibin+2)
     else:
       Nsf_corr+=sfhit
       nsf_statID_corr[station] = sfhit
   del hist
   return Nsf_corr, Nsf, nsf_statID_corr, nsf_statID
+
+def getScifiHitDensity(hitcoll, width=1.):
+    if len(hitcoll) == 0: return 0
+    weights = []
+    for i in hitcoll:
+        neighbour_no_of_hits = 0
+        for j in hitcoll:
+            if i == j: continue
+            if ROOT.TMath.Abs(i-j) <= width: neighbour_no_of_hits += 1
+        weights.append(neighbour_no_of_hits)
+    sum_weights = sum(weights)
+    if sum_weights: return sum_weights
+    else: return 0
 
 def GetVetoBar(detID):
     plane = int((detID/1000)%10)
@@ -136,13 +230,14 @@ parser.add_argument("-o", dest = "outputFile", required = False)
 parser.add_argument("-t", dest = "trackFile", required = False)
 parser.add_argument("-g", dest = "geoFile", required = False)
 parser.add_argument("--pmu", dest="pmu", required=False, default=False, action='store_true')
+parser.add_argument("-npmu", dest="npmu", required=False, default=None, type=int)
 
 args = parser.parse_args()
 
-    
-snd_geo = SndlhcGeo.GeoInterface(args.geoFile)
-scifiDet = ROOT.gROOT.GetListOfGlobals().FindObject('Scifi')
-muFilterDet = ROOT.gROOT.GetListOfGlobals().FindObject('MuFilter')
+geofiles    = {'DIS': '/eos/experiment/sndlhc/users/dancc/MuonDIS/ecut1.0_z_2.85_3.55m_Ioni_latelateFLUKA/muonDis_201/1/geofile_full.muonDIS-TGeant4-muonDis_201.root',
+               'PMU': '/eos/experiment/sndlhc/MonteCarlo/MuonBackground/muons_down/scoring_1.8_Bfield_4xstat/geofile_full.Ntuple-TGeant4.root',
+               'DATA2022': '/eos/experiment/sndlhc/convertedData/physics/2022/geofile_sndlhc_TI18_V5_14August2022.root',
+               'DATA2023': '/eos/experiment/sndlhc/convertedData/physics/2023/geofile_sndlhc_TI18_V3_2023.root'}
 
 # Set up TTrees
 isMC = False
@@ -150,6 +245,7 @@ treeName = "rawConv"
 TDC2ns = 1E9/160.316E6
 ch = ROOT.TChain(treeName)
 ch.Add(args.inputFile)
+tag = 'DATA'
 
 if ch.GetEntries() == 0 :
     treeName = "cbmsim"
@@ -158,21 +254,45 @@ if ch.GetEntries() == 0 :
     del ch
     ch = ROOT.TChain(treeName)
     ch.Add(args.inputFile)
+    tag='DIS'
+    if args.pmu: 
+        tag='PMU'
+        if args.npmu: print('N. of samples', int(args.npmu))
 
 if ch.GetEntries() == 0 :
     print("Chain is empty. Exitting")
     exit(-1)
 
+if not args.geoFile:
+    if not isMC:
+        rindex = args.inputFile.find('run')
+        run = args.inputFile[rindex+3:rindex+7]
+        year=''
+        if int(run) < 5562: year='2022'
+        else: year='2023'
+        tag=tag+year
+    geoFile = geofiles[tag]
+    print('Input geoFile not provided, using', geoFile)
+else:
+    geoFile = args.geoFile
+
+snd_geo = SndlhcGeo.GeoInterface(geoFile)
+scifiDet = ROOT.gROOT.GetListOfGlobals().FindObject('Scifi')
+muFilterDet = ROOT.gROOT.GetListOfGlobals().FindObject('MuFilter')
+
 ch_tracks = ROOT.TChain(treeName)
 ch_tracks.Add(args.trackFile)
 ch.AddFriend(ch_tracks)
+
+#ADD INITEVENT
 
 # Set up cuts
 cuts = []
 ################################################################################
 # At least 35 SciFi hits
 ################################################################################
-min_scifi_hits_cut = 35
+#min_scifi_hits_cut = 35
+min_scifi_hits_cut = 60
 def min_scifi_hits(event) :
     n_hits = 0
     n_hits_corr = 0
@@ -261,71 +381,79 @@ def SingleScifiCluster(event):
     return ret, value
 cuts.append(["Single H/V Cluster in first {0} Scifi planes".format(uptoiplane), SingleScifiCluster, "SingleSFClusters", 20, 0, 20])
 ################################################################################
+# More than N cluster in Scifi 5
+################################################################################
+#nclus5 = 2
+nclus5 = 6
+clus_iplane = 5
+def ScifiCluster(event):
+    NsfClPl_H       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    NsfClPl_V       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    Nsfcl= 0
+    if not isMC:
+        DATA_scifiCluster = scifiCluster(event.Digi_ScifiHits, scifiDet)
+        for aCl in DATA_scifiCluster:
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
+    else:
+        for aCl in event.Cluster_Scifi: # MonteCarlo clustering
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
+    ret = False
+    value = NsfClPl_H[clus_iplane]+NsfClPl_V[clus_iplane]
+    if NsfClPl_V[clus_iplane] > nclus5 or NsfClPl_H[clus_iplane] > nclus5:
+        ret = True
+    return ret, value
+cuts.append(["More than {0} clusters in SciFi {1}".format(nclus5, clus_iplane), ScifiCluster, "ScifiCluster", 201, -0.5, 200.5])
+################################################################################
 # Ask for shower developing
 ################################################################################
-"""def MaxDelta(event):
-    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
-    for aHit in event.Digi_ScifiHits:
-        if not aHit.isValid(): continue
-        station = aHit.GetStation()
-        nsf_statID[station]+=1
-    FirstSFHit = -1
-    deltahits = {2:0, 3:0, 4:0, 5:0}
-    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
-    for detID in range(1, 6):
-        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
-            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
-    MaxDelta = max([value for key, value in deltahits.items() if key > 2], key=abs)
-    MaxKey = [key for key, value in deltahits.items() if value == MaxDelta]
+clusIncrease_plane = 5
+def ScifiClusIncrease(event):
+    NsfClPl_H       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    NsfClPl_V       =  {1:0, 2:0, 3:0, 4:0, 5:0}
+    NsfClPl         = {1:0, 2:0, 3:0, 4:0, 5:0}
+    Nsfcl= 0
+    if not isMC:
+        DATA_scifiCluster = scifiCluster(event.Digi_ScifiHits, scifiDet)
+        for aCl in DATA_scifiCluster:
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            NsfClPl[int(detID/1e+6)]+=1
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
+    else:
+        for aCl in event.Cluster_Scifi: # MonteCarlo clustering
+            detID = aCl.GetFirst()
+            Nsfcl+=1
+            station = int(detID/1e+6)
+            NsfClPl[int(detID/1e+6)]+=1
+            if int(detID/100000)%10 == 1: 
+                NsfClPl_V[int(detID/1e+6)]+=1
+            else:
+                NsfClPl_H[int(detID/1e+6)]+=1
     ret = False
-    value = MaxKey[0]
-    if deltahits[MaxKey[0]] < 0: return ret, value, deltahits, MaxDelta, MaxKey  
-    lastdeltas = []
-    lastdeltas = [value for key, value in deltahits.items() if key > MaxKey[0]]
-    if not all(_value > -0.05 for _value in lastdeltas): ret = False
-    else: ret = True
-    return ret, value, deltahits, MaxDelta, MaxKey
-cuts.append(["Ask for HAD shower develop", MaxDelta, "HShowerDev", 5, 0.5, 5.5,])"""
-################################################################################
-# Ask for at least 6 US hits
-################################################################################
-min_US_hits_cut = 8
-def min_US_hits(event):
-    US_hits = 0.
-    ret = True
-    for hit in event.Digi_MuFilterHits :
-        if hit.GetSystem() != 2 : continue
-        if not hit.isValid() : continue
-        US_hits += 1.
-    if US_hits < min_US_hits_cut :
-        ret =  False
-    return ret, US_hits
-#cuts.append(["Number of US hits is > {0}".format(min_US_hits_cut), min_US_hits, "US_hits", 51, -0.5, 50.5])
-################################################################################
-# Shower forming
-################################################################################
-def FollowShower(event):
-    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
-    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
-    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
-    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
-    if isMC: nsf_statID=nsf_stat
-    else: nsf_statID=nsf_stat_corr
-    FirstSFHit = -1
-    deltahits = {2:0, 3:0, 4:0, 5:0}
-    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
-    for detID in range(1, 6):
-        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
-            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
-    ret = False
-    if deltahits[4] > 1. and deltahits[5] > 0: ret = True
-    return ret, deltahits[4]
-#cuts.append(["Delta4>1 and Delta5>0", FollowShower, "FollowShower", 180, -3, 15])
+    value = NsfClPl[clusIncrease_plane]-NsfClPl[clusIncrease_plane-1]
+    if NsfClPl[clusIncrease_plane] >= NsfClPl[clusIncrease_plane-1]:
+        ret = True
+    return ret, value
+cuts.append(["Scifi {0} clusters > SciFi {1} clusters".format(clusIncrease_plane, clusIncrease_plane-1), ScifiClusIncrease, "ScifiClusIncrease", 201, -100.5,100.5])
 ################################################################################
 # Shower in US
 ################################################################################
-min_us_plane = 1
-if isMC: min_us_plane = 2
 def US_shower(event):
     nus_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
     ret = False
@@ -334,31 +462,29 @@ def US_shower(event):
         if not hit.isValid() : continue
         MuFistation = hit.GetPlane()
         nus_statID[MuFistation+1]+=1
-    if nus_statID[1] > min_us_plane and nus_statID[2] > min_us_plane and nus_statID[3] > min_us_plane: ret = True
-    return ret, nus_statID[1]
-#cuts.append(["US1-2-3 hits > {0}".format(min_us_plane), US_shower, "ThreeUS_2", 11, -0.5, 10.5])
+    avg_1 = float((nus_statID[1]+nus_statID[2]+nus_statID[3])/3)
+    avg_2 = float((nus_statID[3]+nus_statID[4]+nus_statID[5])/3)
+    if avg_1 >= avg_2: ret = True
+    return ret, (avg_1-avg_2)
+cuts.append(["Avg US1-2-3 bars > Avg US3-4-5 bars", US_shower, "US_avg", 20, -10, 10])
 ################################################################################
-# Kill EM showers in upstream SciFi
+# Ask for at least J bars in US1 & US2
 ################################################################################
-def NoEMShower(event):
-    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
-    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
-    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
-    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
-    if isMC: nsf_statID=nsf_stat
-    else: nsf_statID=nsf_stat_corr
-    FirstSFHit = -1
-    deltahits = {2:0, 3:0, 4:0, 5:0}
-    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
-    for detID in range(1, 6):
-        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
-            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
+nbars = 2
+def min_US1_US2_bars(event):
+    nus_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
     ret = False
-    delta2132 = [value for key, value in deltahits.items() if key < 4]
-    if all(value > -0.05 for value in delta2132): ret = True
-    #if all(value for key, value in deltahits.items() if value > -0.05 and key<4): ret = True
-    return ret, deltahits[2]
-#cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
+    US_hits = 0.
+    for hit in event.Digi_MuFilterHits :
+        if hit.GetSystem() != 2 : continue
+        if not hit.isValid() : continue
+        US_hits+=1
+        MuFistation = hit.GetPlane()
+        nus_statID[MuFistation+1]+=1
+    if nus_statID[1] >= nbars and nus_statID[2] >= nbars:
+        ret = True
+    return ret, US_hits
+cuts.append(["More than {0} bars fired in US1 and US2 stations".format(nbars), min_US1_US2_bars, "US1_US2_bars", 51, -0.5, 50.5])
 ################################################################################
 # END CUT DEFINITONS
 ################################################################################
@@ -437,7 +563,9 @@ for event in ch:
     accept_event = True
     WEIGHT=1.
     if isMC:
-        if args.pmu: WEIGHT = 8E8/2E8*event.MCTrack[0].GetWeight()*1E5
+        if args.pmu: 
+            WEIGHT = 8E8/2E8*event.MCTrack[0].GetWeight()*1E5
+            if args.npmu: WEIGHT = WEIGHT/int(args.npmu)
         else:
             W = 8E8/2E8*event.MCTrack[0].GetWeight()
             wLHC = W/10/2  #I am using the FLUKA sample twice, mu->p & mu->n
@@ -445,6 +573,12 @@ for event in ch:
             PID = event.MCTrack[0].GetPdgCode()
             wDIS = 0.6E-3*h["g_"+str(PID)].Eval(event.MCTrack[0].GetEnergy())
             WEIGHT=wLHC*wInter*wDIS*1E5
+    else:
+        scifiDet.InitEvent(event.EventHeader)
+        muFilterDet.InitEvent(event.EventHeader)
+    if not isMC:
+        avg_sf_x, avg_sf_y = getAvgScifiPos(event, scifiDet)
+        rangePerStation = getTimeCorrectedRange(event, scifiDet)
     for i_cut, cut in enumerate(cuts) :
         #if i_cut != len(cuts)-2: 
         this_cut_passed, this_cut_var = cut[1](event)
@@ -493,3 +627,141 @@ cut_flow_extended.Write()
 cut_flow_extended2.Write()
 output_file.Write()
 output_file.Close()
+
+############################################################################
+######################## UNUSED CUT DEFINITIONS ############################
+############################################################################
+
+
+################################################################################
+# Kill EM showers in upstream SciFi
+################################################################################
+def NoEMShower(event):
+    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
+    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
+    if isMC: nsf_statID=nsf_stat
+    else: nsf_statID=nsf_stat_corr
+    FirstSFHit = -1
+    deltahits = {2:0, 3:0, 4:0, 5:0}
+    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
+    for detID in range(1, 6):
+        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
+            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
+    ret = False
+    delta2132 = [value for key, value in deltahits.items() if key < 4]
+    if all(value > -0.05 for value in delta2132): ret = True
+    #if all(value for key, value in deltahits.items() if value > -0.05 and key<4): ret = True
+    return ret, deltahits[2]
+#cuts.append(["Delta2_3_positive", NoEMShower, "Delta2_3_positive", 180, -3, 15])
+################################################################################
+# Ask for at least 6 US hits
+################################################################################
+min_US_hits_cut = 8
+def min_US_hits(event):
+    US_hits = 0.
+    ret = True
+    for hit in event.Digi_MuFilterHits :
+        if hit.GetSystem() != 2 : continue
+        if not hit.isValid() : continue
+        US_hits += 1.
+    if US_hits < min_US_hits_cut :
+        ret =  False
+    return ret, US_hits
+#cuts.append(["Number of US hits is > {0}".format(min_US_hits_cut), min_US_hits, "US_hits", 51, -0.5, 50.5])
+################################################################################
+# Shower forming
+################################################################################
+def FollowShower(event):
+    nsf_stat = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_stat_corr = {1:0, 2:0, 3:0, 4:0, 5:0}
+    nsf_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
+    Nsf_corr, Nsf, nsf_stat_corr, nsf_stat = CorrectScifi(event)
+    if isMC: nsf_statID=nsf_stat
+    else: nsf_statID=nsf_stat_corr
+    FirstSFHit = -1
+    deltahits = {2:0, 3:0, 4:0, 5:0}
+    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
+    for detID in range(1, 6):
+        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
+            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
+    ret = False
+    if deltahits[4] > 1. and deltahits[5] > 0: ret = True
+    return ret, deltahits[4]
+#cuts.append(["Delta4>1 and Delta5>0", FollowShower, "FollowShower", 180, -3, 15])
+################################################################################
+# Hit density in Scifi
+################################################################################
+ScifiHitDens_min = 100.
+def HitDensityScifi(event):
+    vLeft, vRight = ROOT.TVector3(), ROOT.TVector3()
+    Scifi_HitCollectionX = {1:[], 2:[], 3:[], 4:[], 5:[]}
+    Scifi_HitCollectionY = {1:[], 2:[], 3:[], 4:[], 5:[]}
+    ScifiDensityMean     = {1:0, 2:0, 3:0, 4:0, 5:0}
+    ret = False
+    for aHit in event.Digi_ScifiHits:
+        if not aHit.isValid(): continue
+        station = aHit.GetStation()
+        detID = aHit.GetDetectorID()
+        scifiDet.GetSiPMPosition(detID, vLeft, vRight)
+        if not isMC:
+            L = None
+            if aHit.isVertical(): L = vRight.Y()-avg_sf_y[station]
+            else: L = avg_sf_x[station]-vLeft.X()
+            hit_time = scifiDet.GetCorrectedTime(detID, aHit.GetTime()*TDC2ns, L)
+            if not isInTimeRange(hit_time, rangePerStation[station][0], rangePerStation[station][1]): continue
+        if aHit.isVertical():
+            Scifi_HitCollectionX[station].append(vLeft.X())
+        else:
+            Scifi_HitCollectionY[station].append(vRight.Y())
+    for plane in range(1, 6):
+        ScifiDensityMean[plane] = float((getScifiHitDensity(Scifi_HitCollectionX[plane])+getScifiHitDensity(Scifi_HitCollectionY[plane]))/2.)
+    if ScifiDensityMean[5] >= ScifiHitDens_min or ScifiDensityMean[4] >= ScifiHitDens_min or ScifiDensityMean[3] >= ScifiHitDens_min: ret = True
+    return ret, ScifiDensityMean[5]
+#cuts.append(["ScifiHitDensity > {} in at least one of the 3 last planes".format(ScifiHitDens_min), HitDensityScifi, "SFHitDens", 250, 0, 25000])
+################################################################################
+# More hit variation in Scifi planes
+################################################################################
+min_maxdelta = 7.35
+def MaxDelta(event):
+    n_hits_corr, n_hits, nsf_statID_corr, nsf_statID = CorrectScifi(event)
+    FirstSFHit = -1
+    deltahits = {2:0, 3:0, 4:0, 5:0}
+    if not isMC:
+        nsf_statID = nsf_statID_corr
+    FirstSFHit = next((i for i, x in enumerate(nsf_statID.values()) if x), None)+1
+    for detID in range(1, 6):
+        if detID > FirstSFHit and nsf_statID[detID-1] and detID > 1:
+            deltahits[detID] = float((nsf_statID[detID]-nsf_statID[detID-1])/nsf_statID[detID-1])
+    MaxDelta = max([value for key, value in deltahits.items() if key > 2], key=abs)
+    MaxKey = [key for key, value in deltahits.items() if value == MaxDelta]
+    ret = False
+    value = MaxKey[0]
+    """if deltahits[MaxKey[0]] < 0: return ret, value  
+    lastdeltas = []
+    lastdeltas = [value for key, value in deltahits.items() if key > MaxKey[0]]
+    if not all(_value > -0.05 for _value in lastdeltas): ret = False
+    else: ret = True"""
+    if deltahits[value] > min_maxdelta: ret = True
+    return ret, value
+#cuts.append(["Ask for maximum variation > {}".format(min_maxdelta), MaxDelta, "MinMaxDelta", 5, 0.5, 5.5,])
+################################################################################
+# Ask for at least J bars in K different planes
+################################################################################
+nplanes = 3
+nus_thresh = 2
+def min_US_bars_nplanes(event):
+    nus_statID = {1:0, 2:0, 3:0, 4:0, 5:0}
+    ret = False
+    US_hits = 0.
+    for hit in event.Digi_MuFilterHits :
+        if hit.GetSystem() != 2 : continue
+        if not hit.isValid() : continue
+        US_hits+=1
+        MuFistation = hit.GetPlane()
+        nus_statID[MuFistation+1]+=1
+    if sum(1 for x in nus_statID.values() if x >= nus_thresh) >= nplanes:
+        ret = True
+    return ret, US_hits
+#cuts.append(["More than {0} bars fired in at least {1} US planes".format(nus_thresh,nplanes), min_US_bars_nplanes, "USbar_planes", 51, -0.5, 50.5])

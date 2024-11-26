@@ -1,11 +1,11 @@
-import ROOT
-import numpy as np
 import os
-
-import SndlhcGeo
-
 # Code snippet from Simona. This should go somewhere where it can be used by several different pieces of code (monitoring, analysis, etc)
 import pickle
+
+import numpy as np
+import ROOT
+import SndlhcGeo
+
 p = open("/eos/experiment/sndlhc/convertedData/commissioning/TI18/FSdict.pkl",'rb')
 FSdict = pickle.load(p)
 
@@ -56,6 +56,7 @@ def bunchXtype(eventTime, runN):
 # End snippet
 
 import argparse
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-f", dest = "inputFile", required = False)
@@ -64,16 +65,18 @@ parser.add_argument("-t", dest = "trackFile", required = False)
 parser.add_argument("-g", dest = "geoFile", required = False)
 parser.add_argument("--tracking", dest="tracking", required=False, default=False, action='store_true')
 parser.add_argument("--pmu", dest="pmu", required=False, default=False, action='store_true')
+parser.add_argument("-npmu", dest="npmu", required=False, default=None, type=int)
 
 args = parser.parse_args()
+
+geofiles    = {'DIS': '/eos/experiment/sndlhc/users/dancc/MuonDIS/ecut1.0_z_2.85_3.55m_Ioni_latelateFLUKA/muonDis_201/1/geofile_full.muonDIS-TGeant4-muonDis_201.root',
+               'PMU': '/eos/experiment/sndlhc/MonteCarlo/MuonBackground/muons_down/scoring_1.8_Bfield_4xstat/geofile_full.Ntuple-TGeant4.root',
+               'DATA2022': '/eos/experiment/sndlhc/convertedData/physics/2022/geofile_sndlhc_TI18_V5_14August2022.root',
+               'DATA2023': '/eos/experiment/sndlhc/convertedData/physics/2023/geofile_sndlhc_TI18_V3_2023.root'}
 
 if args.tracking and args.inputFile and args.geoFile:
     runTracking()
     exit()
-    
-snd_geo = SndlhcGeo.GeoInterface(args.geoFile)
-scifiDet = ROOT.gROOT.GetListOfGlobals().FindObject('Scifi')
-muFilterDet = ROOT.gROOT.GetListOfGlobals().FindObject('MuFilter')
 
 # Set up TTrees
 isMC = False
@@ -81,6 +84,7 @@ treeName = "rawConv"
 
 ch = ROOT.TChain(treeName)
 ch.Add(args.inputFile)
+tag = 'DATA'
 
 if ch.GetEntries() == 0 :
     treeName = "cbmsim"
@@ -89,10 +93,30 @@ if ch.GetEntries() == 0 :
     del ch
     ch = ROOT.TChain(treeName)
     ch.Add(args.inputFile)
+    tag='DIS'
+    if args.pmu: 
+        tag='PMU'
+        if args.npmu: print('N. of samples', int(args.npmu))
 
 if ch.GetEntries() == 0 :
     print("Chain is empty. Exitting")
     exit(-1)
+
+if not args.geoFile:
+    if not isMC:
+        rindex = args.inputFile.find('run')
+        run = args.inputFile[rindex+3:rindex+7]
+        year=''
+        if int(run) < 5562: year='2022'
+        else: year='2023'
+        tag=tag+year
+    geoFile = geofiles[tag]
+    print('Input geoFile not provided, using', geoFile)
+
+
+snd_geo = SndlhcGeo.GeoInterface(geoFile)
+scifiDet = ROOT.gROOT.GetListOfGlobals().FindObject('Scifi')
+muFilterDet = ROOT.gROOT.GetListOfGlobals().FindObject('MuFilter')
 
 ch_tracks = ROOT.TChain(treeName)
 ch_tracks.Add(args.trackFile)
@@ -474,7 +498,9 @@ for i_event, event in enumerate(ch):
     WEIGHT=1.
     if i_event%10000 == 0: print("Sanity check, current event ", i_event)
     if isMC:
-        if args.pmu: WEIGHT = 8E8/2E8*event.MCTrack[0].GetWeight()*1E5
+        if args.pmu: 
+            WEIGHT = 8E8/2E8*event.MCTrack[0].GetWeight()*1E5
+            if args.npmu: WEIGHT = WEIGHT/int(args.npmu)
         else:
             W = 8E8/2E8*event.MCTrack[0].GetWeight()
             wLHC = W/10/2. # I am using the same FLUKA sample twice, mu->p & mu->n
@@ -482,6 +508,9 @@ for i_event, event in enumerate(ch):
             PID = event.MCTrack[0].GetPdgCode()
             wDIS = 0.6E-3*h["g_"+str(PID)].Eval(event.MCTrack[0].GetEnergy())
             WEIGHT=wLHC*wInter*wDIS*1E5
+    else:
+        scifiDet.InitEvent(event.EventHeader)
+        muFilterDet.InitEvent(event.EventHeader)
     for i_cut, cut in enumerate(cuts) : 
         this_cut_passed, this_cut_var = cut[1](event)
         passes_cut[i_cut] = this_cut_passed
