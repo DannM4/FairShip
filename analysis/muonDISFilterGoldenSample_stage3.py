@@ -52,7 +52,7 @@ def getAvgScifiPos(event, scifiDet):
             avg_sf_y[plane]+= (a.Y() + b.Y())/2.
     for iplane in range(1, 5):
         if n_sf_hits_x[iplane]:
-            avg_sf_x[plane]/=n_sf_hits_x[iplane]
+            avg_sf_x[iplane]/=n_sf_hits_x[iplane]
         if n_sf_hits_y[iplane]:
             avg_sf_y[iplane]/=n_sf_hits_y[iplane]
     return avg_sf_x, avg_sf_y
@@ -179,6 +179,46 @@ def GetVetoBar(detID):
     plane = int((detID/1000)%10)
     bar = int((detID%10000)%1000)
     return plane, bar
+
+def getHitQDC(digi):
+    ns = max(1, digi.GetnSides())
+    HitQDC = 0
+    for side in range(ns):
+        for m in range(digi.GetnSiPMs()):
+            qdc = digi.GetSignal(m+side*digi.GetnSiPMs())
+            if not qdc < 0 :
+                HitQDC += qdc
+    return HitQDC
+
+def getWAvgScifiPos(event, scifiDet):
+    n_sf_hits_x ={1:0, 2:0, 3:0, 4:0, 5:0}
+    n_sf_hits_y ={1:0, 2:0, 3:0, 4:0, 5:0}
+    avg_sf_x = {1:0, 2:0, 3:0, 4:0, 5:0}
+    avg_sf_y = {1:0, 2:0, 3:0, 4:0, 5:0}
+    qdc_hits_x = {1:0, 2:0, 3:0, 4:0, 5:0}
+    qdc_hits_y = {1:0, 2:0, 3:0, 4:0, 5:0}
+    a, b = ROOT.TVector3(), ROOT.TVector3()
+    for aHit in event.Digi_ScifiHits:
+        if not aHit.isValid(): continue
+        plane = aHit.GetStation()
+        detID = aHit.GetDetectorID()
+        scifiDet.GetSiPMPosition(detID, a, b)
+        HitQDC = getHitQDC(aHit)
+        if not HitQDC: continue
+        if aHit.isVertical():
+            n_sf_hits_x[plane]+=1
+            qdc_hits_x[plane]+=HitQDC
+            avg_sf_x[plane]+= HitQDC*(a.X() + b.X())/2.
+        else:
+            n_sf_hits_y[plane]+=1
+            qdc_hits_y[plane]+=HitQDC
+            avg_sf_y[plane]+= HitQDC*(a.Y() + b.Y())/2.
+    for iplane in range(1, 5):
+        if n_sf_hits_x[iplane]:
+            avg_sf_x[iplane]/=qdc_hits_x[iplane]
+        if n_sf_hits_y[iplane]:
+            avg_sf_y[iplane]/=qdc_hits_y[iplane]
+    return avg_sf_x, avg_sf_y
 
 def runTracking():
     print('Run tracking')
